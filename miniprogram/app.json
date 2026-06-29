@@ -1,0 +1,11 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/history/history"
+  ],
+  "window": {
+    "navigationBarTitleText": "新生入学助手",
+    "navigationBarBackgroundColor": "#2563eb",
+    "navigationBarTextStyle": "white"
+  }
+}

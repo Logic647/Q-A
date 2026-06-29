@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="page-title">提问记录</view>
+  <view class="empty" wx:if="{{history.length === 0}}">暂无提问记录</view>
+  <view class="h-card" wx:for="{{history}}" wx:key="question_id">
+    <view class="h-header">
+      <text class="h-cat">{{item.category}}</text>
+      <text class="h-status {{item.status === 1 ? 'done' : 'pending'}}">
+        {{item.status === 1 ? '已回答' : '待回答'}}
+      </text>
+    </view>
+    <view class="h-question">{{item.question_text}}</view>
+    <view class="h-answer" wx:if="{{item.answer_text}}">{{item.answer_text}}</view>
+  </view>
+</view>

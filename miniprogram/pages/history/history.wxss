@@ -1,0 +1,11 @@
+.container { padding: 20rpx; background: #f5f7fa; min-height: 100vh; }
+.page-title { font-size: 32rpx; font-weight: bold; color: #333; margin-bottom: 20rpx; }
+.empty { text-align: center; color: #999; padding: 60rpx; font-size: 28rpx; }
+.h-card { background: #fff; border-radius: 12rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.h-header { display: flex; justify-content: space-between; margin-bottom: 12rpx; }
+.h-cat { font-size: 22rpx; color: #999; background: #f0f0f0; padding: 4rpx 12rpx; border-radius: 8rpx; }
+.h-status { font-size: 22rpx; padding: 4rpx 12rpx; border-radius: 8rpx; }
+.h-status.done { background: #dcfce7; color: #22c55e; }
+.h-status.pending { background: #fef9c3; color: #eab308; }
+.h-question { font-size: 28rpx; color: #333; margin-bottom: 12rpx; }
+.h-answer { font-size: 26rpx; color: #666; background: #f5f7fa; padding: 16rpx; border-radius: 8rpx; line-height: 1.6; white-space: pre-wrap; }

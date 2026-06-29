@@ -1,0 +1,49 @@
+<view class="chat-container">
+  <!-- 消息列表 -->
+  <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollToId}}" enhanced show-scrollbar="{{false}}">
+    <!-- 欢迎消息 -->
+    <view class="msg-row bot">
+      <view class="avatar bot-avatar">助</view>
+      <view class="bubble bot-bubble">
+        <text>你好！我是新生入学助手，有什么问题都可以问我～\n\n你可以直接输入问题，也可以点击下方的快捷提问：</text>
+      </view>
+    </view>
+
+    <!-- 消息列表 -->
+    <view class="msg-row {{item.role}}" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
+      <view class="avatar {{item.role === 'bot' ? 'bot-avatar' : 'user-avatar'}}">
+        {{item.role === 'bot' ? '助' : '我'}}
+      </view>
+      <view class="bubble {{item.role === 'bot' ? 'bot-bubble' : 'user-bubble'}}">
+        <text>{{item.text}}</text>
+        <view class="bubble-time">{{item.time}}</view>
+      </view>
+    </view>
+
+    <!-- 加载中 -->
+    <view class="msg-row bot" wx:if="{{loading}}" id="msg-loading">
+      <view class="avatar bot-avatar">助</view>
+      <view class="bubble bot-bubble loading-bubble">
+        <view class="dot"></view><view class="dot"></view><view class="dot"></view>
+      </view>
+    </view>
+
+    <!-- 底部占位 -->
+    <view id="msg-bottom" style="height:20rpx;"></view>
+  </scroll-view>
+
+  <!-- 快捷提问 -->
+  <view class="quick-ask">
+    <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="quick-scroll">
+      <view class="quick-item" wx:for="{{quickQuestions}}" wx:key="*this" bindtap="onQuickAsk" data-text="{{item}}">
+        {{item}}
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 输入栏 -->
+  <view class="input-bar">
+    <input class="input-box" placeholder="输入你的问题..." bindinput="onInput" value="{{inputValue}}" bindconfirm="onSend" confirm-type="send" />
+    <view class="send-btn {{inputValue ? 'active' : ''}}" bindtap="onSend">发送</view>
+  </view>
+</view>
