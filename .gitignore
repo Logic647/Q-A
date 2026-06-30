@@ -12,6 +12,16 @@ package-lock.json
 
 # Temp files
 server/临时文件/
+server/test_*.js
+server/check_*.js
+server/flush_cache.js
+server/list_models.js
+server/restart*.js
+server/restart*.bat
+server/start*.js
+server/stop.js
+server/update_*.js
+server/write_*.js
 *.log
 *.pid
 *.txt
