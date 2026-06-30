@@ -1,0 +1,109 @@
+<view class="admin-container">
+  <view class="admin-header">
+    <text class="admin-title">管理后台</text>
+  </view>
+
+  <!-- 统计概览 -->
+  <view class="stats-card">
+    <view class="stats-title">数据概览</view>
+    <view class="stats-grid">
+      <view class="stat-item">
+        <text class="stat-num">{{stats.questions.total || 0}}</text>
+        <text class="stat-label">总问题数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{stats.answers.total || 0}}</text>
+        <text class="stat-label">总回答数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{stats.knowledge_base.total || 0}}</text>
+        <text class="stat-label">知识库条目</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-num">{{stats.low_score_count || 0}}</text>
+        <text class="stat-label">低分回答</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 待审核列表 -->
+  <view class="section-card">
+    <view class="section-title">
+      <text>待审核回答</text>
+      <text class="section-count">({{pendingList.length}})</text>
+    </view>
+    <view class="empty-tip" wx:if="{{pendingList.length === 0}}">暂无待审核内容</view>
+    <view class="pending-item" wx:for="{{pendingList}}" wx:key="answer_id">
+      <view class="pending-header">
+        <text class="pending-q">问题：{{item.question_text}}</text>
+        <text class="pending-category">{{item.category}}</text>
+      </view>
+      <view class="pending-answer">{{item.answer_text}}</view>
+      <view class="pending-meta">
+        <text>回答者：{{item.responder_name || '匿名'}}</text>
+        <text>{{item.created_at}}</text>
+      </view>
+      <view class="pending-actions">
+        <button class="btn-pass" size="mini" bindtap="onApprove" data-id="{{item.answer_id}}">通过</button>
+        <button class="btn-reject" size="mini" bindtap="onReject" data-id="{{item.answer_id}}">拒绝</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 低分回答列表 -->
+  <view class="section-card">
+    <view class="section-title">
+      <text>低分回答</text>
+      <text class="section-count">({{lowScoreList.length}})</text>
+    </view>
+    <view class="empty-tip" wx:if="{{lowScoreList.length === 0}}">暂无低分回答</view>
+    <view class="low-score-item" wx:for="{{lowScoreList}}" wx:key="answer_id">
+      <view class="low-header">
+        <text class="low-q">{{item.question_text}}</text>
+        <text class="low-score">评分：{{item.avg_score}} ({{item.score_count}}人)</text>
+      </view>
+      <view class="low-answer">{{item.answer_text}}</view>
+    </view>
+  </view>
+
+  <!-- 知识库管理 -->
+  <view class="section-card">
+    <view class="section-title">
+      <text>知识库管理</text>
+      <button class="btn-add" size="mini" bindtap="onAddKB">添加条目</button>
+    </view>
+    <view class="kb-item" wx:for="{{kbList}}" wx:key="kb_id">
+      <view class="kb-question">{{item.question_text}}</view>
+      <view class="kb-answer">{{item.answer_text}}</view>
+      <view class="kb-meta">
+        <text class="kb-category">{{item.category}}</text>
+        <text class="kb-hit">命中 {{item.hit_count}} 次</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 添加知识库弹窗 -->
+  <view class="modal-mask" wx:if="{{showAddKB}}" bindtap="closeAddKB"></view>
+  <view class="modal {{showAddKB ? 'show' : ''}}">
+    <view class="modal-header">
+      <text class="modal-title">添加知识库条目</text>
+    </view>
+    <view class="modal-body">
+      <view class="form-item">
+        <text class="form-label">问题：</text>
+        <input class="form-input" placeholder="输入常见问题" value="{{newKB.question}}" bindinput="onKBQuestionInput" />
+      </view>
+      <view class="form-item">
+        <text class="form-label">回答：</text>
+        <textarea class="form-textarea" placeholder="输入标准答案" value="{{newKB.answer}}" bindinput="onKBAnswerInput"></textarea>
+      </view>
+      <view class="form-item">
+        <text class="form-label">分类：</text>
+        <picker bindchange="onCategoryChange" value="{{categoryIndex}}" range="{{categories}}">
+          <view class="picker-text">{{categories[categoryIndex]}}</view>
+        </picker>
+      </view>
+      <button class="btn-submit" type="primary" bindtap="submitKB">提交</button>
+    </view>
+  </view>
+</view>

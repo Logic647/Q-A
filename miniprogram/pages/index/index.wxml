@@ -43,7 +43,21 @@
 
   <!-- 输入栏 -->
   <view class="input-bar">
+    <view class="map-btn" bindtap="goToMap">
+      <text class="map-icon">📍</text>
+      <text class="map-text">校园地图</text>
+    </view>
     <input class="input-box" placeholder="输入你的问题..." bindinput="onInput" value="{{inputValue}}" bindconfirm="onSend" confirm-type="send" />
     <view class="send-btn {{inputValue ? 'active' : ''}}" bindtap="onSend">发送</view>
+  </view>
+
+  <!-- 管理员入口 -->
+  <view class="admin-entry" bindtap="goToAdmin">
+    <text class="admin-text">管理后台</text>
+  </view>
+
+  <!-- 学生回答入口 -->
+  <view class="answer-entry" bindtap="goToAnswer">
+    <text class="answer-entry-text">回答问题</text>
   </view>
 </view>

@@ -3,7 +3,7 @@ const http = require('http');
 
 const LLM_API_URL = 'https://api.xiaomimimo.com/v1/chat/completions';
 const LLM_API_KEY = 'REDACTED-LLM-API-KEY';
-const LLM_MODEL = 'mimo-v2-flash';
+const LLM_MODEL = 'mimo-v2.5';
 
 async function askLLM(question) {
     const body = JSON.stringify({
@@ -11,7 +11,7 @@ async function askLLM(question) {
         messages: [
             {
                 role: 'system',
-                content: '你是一个新生入学助手，专门回答大学新生关于入学报到、交通出行、费用缴纳、食堂餐饮、校园设施、宿舍生活等方面的问题。回答要简洁实用，分点列出，语气友好亲切。如果问题与大学入学无关，请礼貌地说明你只能回答入学相关问题。'
+                content: '你是一个新生入学助手，专门回答无锡学院大学新生关于入学报到、交通出行、费用缴纳、食堂餐饮、校园设施、宿舍生活等方面的问题。回答要简洁实用，分点列出，语气友好亲切。如果问题与大学入学无关，请礼貌地说明你只能回答入学相关问题。'
             },
             {
                 role: 'user',

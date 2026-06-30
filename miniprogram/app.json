@@ -1,7 +1,10 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/history/history"
+    "pages/history/history",
+    "pages/map/map",
+    "pages/admin/admin",
+    "pages/answer/answer"
   ],
   "window": {
     "navigationBarTitleText": "新生入学助手",

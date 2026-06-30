@@ -1,4 +1,4 @@
-const { getSession } = require('../config/neo4j');
+const { getSession } = require('./config/neo4j');
 
 async function initKnowledgeGraph() {
     const session = await getSession();

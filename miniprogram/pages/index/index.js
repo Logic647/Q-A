@@ -70,5 +70,17 @@ Page({
     _getTime() {
         const d = new Date();
         return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    },
+
+    goToMap() {
+        wx.navigateTo({ url: '/pages/map/map' });
+    },
+
+    goToAdmin() {
+        wx.navigateTo({ url: '/pages/admin/admin' });
+    },
+
+    goToAnswer() {
+        wx.navigateTo({ url: '/pages/answer/answer' });
     }
 });

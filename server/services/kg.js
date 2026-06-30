@@ -53,10 +53,17 @@ async function queryGraph(intent, entities) {
         switch (intent) {
             case '交通':
                 query = `
-                    MATCH (hub:TransportHub)-[:可达]->(school:School)
-                    OPTIONAL MATCH (hub)-[:通过]->(route:Route)
+                    MATCH (hub:TransportHub)-[r:可达]->(school:School)
                     WHERE school.name CONTAINS $schoolName
-                    RETURN hub, route, school
+                    RETURN hub, r AS route, school
+                `;
+                params = { schoolName: '无锡学院' };
+                break;
+            case '奖学金':
+                query = `
+                    MATCH (school:School)-[:设置]->(s:Scholarship)
+                    WHERE school.name CONTAINS $schoolName
+                    RETURN s
                 `;
                 params = { schoolName: '无锡学院' };
                 break;
@@ -87,11 +94,9 @@ async function queryGraph(intent, entities) {
                 break;
             case '宿舍':
                 query = `
-                    MATCH (school:School)-[:拥有]->(building:Building)
-                    WHERE building.type = '宿舍' AND school.name CONTAINS $schoolName
-                    RETURN building
+                    MATCH (d:Dormitory)
+                    RETURN d
                 `;
-                params = { schoolName: '无锡学院' };
                 break;
             case '景点':
                 query = `
