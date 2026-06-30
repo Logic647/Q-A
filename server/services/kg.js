@@ -43,7 +43,7 @@ async function findNode(label, properties) {
 }
 
 // 查询关系（用于问答匹配）
-async function queryGraph(intent, entities) {
+async function queryGraph(intent, entities, questionText = '') {
     const session = await getSession();
     try {
         let query = '';
@@ -52,12 +52,19 @@ async function queryGraph(intent, entities) {
         // 根据意图构建不同的查询
         switch (intent) {
             case '交通':
-                query = `
-                    MATCH (hub:TransportHub)-[r:可达]->(school:School)
-                    WHERE school.name CONTAINS $schoolName
-                    RETURN hub, r AS route, school
-                `;
-                params = { schoolName: '无锡学院' };
+                // 从用户问题中提取出发地
+                const hubKeywords = ['无锡站', '无锡东站', '硕放机场', '苏南硕放', '汽车站'];
+                let hubFilter = '';
+                for (const kw of hubKeywords) {
+                    if (questionText.includes(kw)) { hubFilter = kw; break; }
+                }
+                if (hubFilter) {
+                    query = `MATCH (hub:TransportHub)-[r:可达]->(school:School) WHERE school.name CONTAINS $schoolName AND hub.name CONTAINS $hubName RETURN hub, r AS route, school`;
+                    params = { schoolName: '无锡学院', hubName: hubFilter };
+                } else {
+                    query = `MATCH (hub:TransportHub)-[r:可达]->(school:School) WHERE school.name CONTAINS $schoolName RETURN hub, r AS route, school`;
+                    params = { schoolName: '无锡学院' };
+                }
                 break;
             case '奖学金':
                 query = `

@@ -30,7 +30,6 @@ const SYNONYMS = {
 
 // 意图识别
 const INTENT_PATTERNS = [
-    { intent: '交通', patterns: ['怎么去', '怎么到', '如何到达', '路线', '地铁', '公交', '火车站', '机场', '校车', '接站'] },
     { intent: '费用', patterns: ['学费', '住宿费', '多少钱', '缴费', '交费', '怎么交'] },
     { intent: '奖学金', patterns: ['奖学金', '助学金', '奖助', '助学', '贷款', '贫困'] },
     { intent: '食堂', patterns: ['食堂', '好吃', '美食', '饭菜', '吃饭', '伙食', '餐厅', '校园卡充值'] },
@@ -38,6 +37,7 @@ const INTENT_PATTERNS = [
     { intent: '宿舍', patterns: ['宿舍', '寝室', '住宿', '空调', '卫浴', '门禁'] },
     { intent: '其他', patterns: ['图书馆', '超市', '快递', 'WiFi', '选课', '社团', '军训', '医院', '银行', '周边', '景点'] },
     { intent: '学校', patterns: ['学校怎么样', '学校介绍', '专业', '研究生', '就业', '学校在哪'] },
+    { intent: '交通', patterns: ['怎么去', '怎么到', '如何到达', '路线', '地铁', '公交', '火车站', '机场', '校车', '接站'] },
 ];
 
 function detectIntent(text) {
@@ -47,6 +47,8 @@ function detectIntent(text) {
     for (const { intent, patterns } of INTENT_PATTERNS) {
         let score = 0;
         for (const p of patterns) { if (clean.includes(p)) score++; }
+        // 优先级加权：非交通意图得分翻倍，避免"怎么去图书馆"被交通抢占
+        if (intent !== '交通') score *= 2;
         if (score > bestScore) { bestScore = score; bestIntent = intent; }
     }
     return bestIntent;
@@ -169,7 +171,7 @@ router.post('/ask', async (req, res) => {
         // 3. Neo4j 图查询（知识图谱方式）
         let graphResult = null;
         try {
-            const graphRecords = await queryGraph(intent, [qClean]);
+            const graphRecords = await queryGraph(intent, [qClean], question_text);
             const formattedAnswer = formatGraphAnswer(graphRecords, intent);
             if (formattedAnswer) {
                 graphResult = {
@@ -192,6 +194,8 @@ router.post('/ask', async (req, res) => {
 
         // 5. 回退到 SQL 关键词匹配
         const pool = await getPool();
+        
+        // 策略1：精确匹配
         const exact = await pool.request()
             .input('q', sql.NVarChar, qClean)
             .query(`SELECT TOP 1 * FROM knowledge_base WHERE is_active = 1 
@@ -208,6 +212,31 @@ router.post('/ask', async (req, res) => {
             };
             try { await redis.setex(`qa:${qClean}`, CACHE_TTL, JSON.stringify(result)); } catch (e) {}
             return res.json({ code: 0, data: result, source: 'sql' });
+        }
+
+        // 策略2：关键词模糊匹配（question_text LIKE '%关键词%'）
+        if (intent) {
+            const fuzzy = await pool.request()
+                .input('q', sql.NVarChar, `%${qClean}%`)
+                .query(`SELECT TOP 3 *, 
+                    (CASE WHEN question_text LIKE @q THEN 10 ELSE 0 END) +
+                    (CASE WHEN keywords LIKE @q THEN 5 ELSE 0 END) AS match_score
+                    FROM knowledge_base WHERE is_active = 1 
+                    AND (question_text LIKE @q OR keywords LIKE @q)
+                    ORDER BY match_score DESC, hit_count DESC`);
+            
+            if (fuzzy.recordset.length > 0) {
+                const kbMatch = fuzzy.recordset[0];
+                const result = {
+                    question_id: Date.now(),
+                    channel: 1,
+                    answer: kbMatch.answer_text,
+                    category: kbMatch.category,
+                    source: 'sql_fuzzy'
+                };
+                try { await redis.setex(`qa:${qClean}`, CACHE_TTL, JSON.stringify(result)); } catch (e) {}
+                return res.json({ code: 0, data: result, source: 'sql' });
+            }
         }
 
         // 6. 都没匹配到，调用大模型回答
