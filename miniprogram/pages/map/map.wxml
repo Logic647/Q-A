@@ -1,18 +1,42 @@
-<view class="map-container">
-  <scroll-view class="map-scroll" scroll-x scroll-y>
-    <image 
-      class="campus-map-image" 
-      src="/images/campus_map.jpg" 
-      mode="widthFix"
-      bindload="onImageLoad"
-      binderror="onImageError"
-      show-menu-by-longpress
-    />
-  </scroll-view>
-  
-  <!-- 提示信息 -->
-  <view class="map-tip">
-    <text class="tip-icon">💡</text>
-    <text class="tip-text">双指缩放查看校园地图详情，长按可保存图片</text>
+<view class="map-page">
+  <!-- 半透明背景 -->
+  <view class="backdrop" bindtap="onBackdropTap"></view>
+
+  <!-- 底部面板 -->
+  <view class="sheet">
+    <!-- 拖拽条 -->
+    <view class="drag-handle">
+      <view class="drag-bar"></view>
+    </view>
+
+    <!-- 标题栏 -->
+    <view class="sheet-header">
+      <text class="sheet-title">校园地图</text>
+      <view class="sheet-actions">
+        <view class="action-btn" bindtap="onPreview">
+          <text class="action-icon">🔍</text>
+          <text class="action-text">查看大图</text>
+        </view>
+        <view class="close-btn" bindtap="onClose">
+          <text>×</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 地图内容 -->
+    <scroll-view class="map-scroll" scroll-x scroll-y enhanced show-scrollbar="{{false}}">
+      <image
+        class="campus-map-image"
+        src="/images/campus_map.jpg"
+        mode="widthFix"
+        bindload="onImageLoad"
+        show-menu-by-longpress
+      />
+    </scroll-view>
+
+    <!-- 提示 -->
+    <view class="map-tip">
+      <text class="tip-text">双指缩放查看详情 · 长按可保存图片</text>
+    </view>
   </view>
 </view>

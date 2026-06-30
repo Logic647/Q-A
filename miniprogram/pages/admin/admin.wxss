@@ -42,7 +42,7 @@
 .stat-num {
   font-size: 40rpx;
   font-weight: bold;
-  color: #2563eb;
+  color: #333;
   display: block;
 }
 
@@ -144,7 +144,7 @@
 }
 
 .btn-add {
-  background: #2563eb !important;
+  background: #333 !important;
   color: #fff !important;
   font-size: 24rpx;
 }
@@ -164,8 +164,8 @@
 
 .kb-category {
   font-size: 22rpx;
-  color: #2563eb;
-  background: #eff6ff;
+  color: #555;
+  background: #f0f0f0;
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
 }
@@ -253,6 +253,6 @@
 
 .btn-submit {
   margin-top: 24rpx;
-  background: #2563eb !important;
+  background: #333 !important;
   color: #fff !important;
 }

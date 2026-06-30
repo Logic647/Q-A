@@ -1,25 +1,39 @@
 const express = require('express');
 const router = express.Router();
 const { sql, getPool } = require('../config/db');
+const crypto = require('crypto');
 
-// 微信登录（模拟，实际需调用微信API）
+// 微信登录（支持 wx.login code 和模拟 openid）
 router.post('/login', async (req, res) => {
     try {
-        const { openid, nickname } = req.body;
+        const { code, openid, nickname } = req.body;
         const pool = await getPool();
 
+        // 优先用 code 生成 openid（生产环境应调用微信 jscode2session 接口）
+        let userOpenid = openid;
+        if (code && !openid) {
+            // 模拟：用 code 生成唯一 openid（生产环境替换为微信API调用）
+            userOpenid = 'wx_' + crypto.createHash('md5').update(code).digest('hex').slice(0, 16);
+        }
+
+        if (!userOpenid) {
+            return res.json({ code: -1, msg: '缺少登录凭证' });
+        }
+
+        // 查询是否已有用户
         let result = await pool.request()
-            .input('openid', sql.NVarChar, openid)
+            .input('openid', sql.NVarChar, userOpenid)
             .query('SELECT * FROM [user] WHERE openid = @openid');
 
+        // 新用户则注册
         if (result.recordset.length === 0) {
             await pool.request()
-                .input('openid', sql.NVarChar, openid)
-                .input('nickname', sql.NVarChar, nickname || '新用户')
+                .input('openid', sql.NVarChar, userOpenid)
+                .input('nickname', sql.NVarChar, nickname || '微信用户')
                 .query('INSERT INTO [user] (openid, nickname) VALUES (@openid, @nickname)');
 
             result = await pool.request()
-                .input('openid', sql.NVarChar, openid)
+                .input('openid', sql.NVarChar, userOpenid)
                 .query('SELECT * FROM [user] WHERE openid = @openid');
         }
 

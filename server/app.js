@@ -1,9 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 app.use('/api/user', require('./routes/user'));
 app.use('/api/qa', require('./routes/qa'));

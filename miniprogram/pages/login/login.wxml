@@ -1,0 +1,30 @@
+<view class="container">
+  <view class="logo-area">
+    <view class="logo">无</view>
+    <view class="title">无锡学院新生助手</view>
+    <view class="subtitle">智能问答 · 知识图谱</view>
+  </view>
+
+  <view class="form-area">
+    <view class="login-box" wx:if="{{!loading && !error}}">
+      <button class="btn-wx" bindtap="onWxLogin">
+        <text class="wx-icon">💬</text>
+        <text>微信快捷登录</text>
+      </button>
+    </view>
+
+    <view class="login-box" wx:if="{{loading}}">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">登录中...</text>
+    </view>
+
+    <view class="login-box" wx:if="{{error}}">
+      <text class="error-text">{{error}}</text>
+      <button class="btn-retry" bindtap="onWxLogin">重试</button>
+    </view>
+  </view>
+
+  <view class="footer">
+    <view class="tip">登录即表示同意相关服务协议</view>
+  </view>
+</view>

@@ -1,8 +1,19 @@
 App({
     globalData: {
         baseUrl: 'http://127.0.0.1:3000/api',
-        // baseUrl: 'http://0.0.0.0:3000/api',  // 备选
+        userInfo: null,
+        isLoggedIn: false
     },
+
+    onLaunch() {
+        // 从本地存储恢复登录状态
+        const userInfo = wx.getStorageSync('userInfo');
+        if (userInfo && userInfo.user_id) {
+            this.globalData.userInfo = userInfo;
+            this.globalData.isLoggedIn = true;
+        }
+    },
+
     request(url, method = 'GET', data = {}) {
         return new Promise((resolve, reject) => {
             wx.request({
@@ -10,10 +21,17 @@ App({
                 method,
                 data,
                 header: { 'content-type': 'application/json' },
-                timeout: 10000,
+                timeout: 60000,
                 success: res => resolve(res.data),
                 fail: err => reject(err)
             });
         });
+    },
+
+    logout() {
+        this.globalData.userInfo = null;
+        this.globalData.isLoggedIn = false;
+        wx.removeStorageSync('userInfo');
+        wx.reLaunch({ url: '/pages/login/login' });
     }
 });

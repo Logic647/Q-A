@@ -3,28 +3,20 @@ const app = getApp();
 Page({
     data: {
         imageLoaded: false,
-        scale: 1
+        statusBarHeight: 0
     },
 
     onLoad() {
-        // 获取图片信息
-        wx.getImageInfo({
-            src: '/images/campus_map.jpg',
-            success: (res) => {
-                this.setData({
-                    imageWidth: res.width,
-                    imageHeight: res.height,
-                    imageLoaded: true
-                });
-            },
-            fail: (err) => {
-                console.error('加载地图图片失败:', err);
-            }
-        });
+        const sysInfo = wx.getSystemInfoSync();
+        this.setData({ statusBarHeight: sysInfo.statusBarHeight || 20 });
     },
 
-    onImageLoad(e) {
+    onImageLoad() {
         this.setData({ imageLoaded: true });
+    },
+
+    onClose() {
+        wx.navigateBack();
     },
 
     onPreview() {
@@ -32,5 +24,9 @@ Page({
             urls: ['/images/campus_map.jpg'],
             current: '/images/campus_map.jpg'
         });
+    },
+
+    onBackdropTap() {
+        wx.navigateBack();
     }
 });

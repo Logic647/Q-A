@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/login/login",
     "pages/history/history",
     "pages/map/map",
     "pages/admin/admin",
@@ -8,7 +9,7 @@
   ],
   "window": {
     "navigationBarTitleText": "新生入学助手",
-    "navigationBarBackgroundColor": "#2563eb",
-    "navigationBarTextStyle": "white"
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black"
   }
 }

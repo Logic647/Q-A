@@ -55,8 +55,8 @@
 
 .question-category {
   font-size: 22rpx;
-  color: #2563eb;
-  background: #eff6ff;
+  color: #555;
+  background: #f0f0f0;
   padding: 4rpx 16rpx;
   border-radius: 8rpx;
 }
@@ -89,7 +89,8 @@
 
 .answer-btn {
   font-size: 24rpx;
-  color: #2563eb;
+  color: #333;
+  font-weight: 500;
 }
 
 /* Modal styles */
@@ -194,6 +195,6 @@
 
 .btn-submit {
   flex: 1;
-  background: #2563eb !important;
+  background: #333 !important;
   color: #fff !important;
 }
