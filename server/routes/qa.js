@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sql, getPool } = require('../config/db');
 const { askLLM } = require('../services/llm');
+const { extractKeywordsRule } = require('../services/llm');
 const redis = require('../config/redis');
 const { retrieveKnowledge } = require('../services/kg');
 
@@ -23,7 +24,7 @@ router.post('/ask', async (req, res) => {
             if (cached) return res.json({ code: 0, data: JSON.parse(cached), cached: true });
         } catch (e) {}
 
-        // 2. 并行检索：图谱 + SQL 同时执行
+        // 2. 并行检索：图谱 + SQL知识库
         const [graphKnowledge, sqlKnowledge] = await Promise.all([
             retrieveKnowledge(question_text).catch(() => []),
             (async () => {
@@ -33,7 +34,7 @@ router.post('/ask', async (req, res) => {
                         .input('q', sql.NVarChar, `%${qClean}%`)
                         .query(`SELECT TOP 3 question_text, answer_text, category
                                 FROM knowledge_base WHERE is_active = 1
-                                AND (question_text LIKE @q OR keywords LIKE @q)
+                                AND (question_text LIKE @q OR keywords LIKE @q OR answer_text LIKE @q)
                                 ORDER BY hit_count DESC`);
                     return r.recordset.map(row =>
                         `【${row.category || '通用'}】${row.question_text}：${row.answer_text}`
@@ -42,28 +43,100 @@ router.post('/ask', async (req, res) => {
             })()
         ]);
 
-        const knowledge = [...graphKnowledge, ...sqlKnowledge];
+        let knowledge = [...graphKnowledge, ...sqlKnowledge];
 
-        // 3. SQL 精确匹配时直接返回（秒级响应，跳过 LLM）
-        try {
-            const pool = await getPool();
-            const exact = await pool.request()
-                .input('q', sql.NVarChar, qClean)
-                .query(`SELECT TOP 1 answer_text, category FROM knowledge_base
-                        WHERE is_active = 1 AND REPLACE(REPLACE(REPLACE(question_text,'?',''),'!',''),'。','') = @q`);
-            if (exact.recordset.length > 0) {
-                const kb = exact.recordset[0];
-                const result = {
-                    question_id: Date.now(),
-                    channel: 1,
-                    answer: kb.answer_text,
-                    category: kb.category || '知识库',
-                    source: 'sql_exact'
+        // 4. 同义词扩展检索
+        if (knowledge.length < 2) {
+            try {
+                const pool = await getPool();
+                const expandMap = {
+                    '售货机': ['自动售货', '贩卖机', '自动贩卖'],
+                    '贩卖机': ['自动售货', '售货机'],
+                    '饮料': ['饮品'],
+                    '咖啡': ['咖啡厅', '咖啡店'],
+                    '上床下桌': ['床位', '床铺'],
+                    '开门': ['开放时间', '营业时间'],
+                    '怎么去': ['路线', '坐车', '公交', '地铁'],
+                    '学费': ['费用', '收费标准'],
+                    '食堂': ['餐厅', '饭堂'],
+                    '空调': ['冷气'],
+                    '打印': ['打印店', '复印'],
+                    '快递': ['收发室', '取件'],
+                    '超市': ['便利店', '商店'],
                 };
-                try { await redis.setex(`qa:${qClean}`, CACHE_TTL, JSON.stringify(result)); } catch (e) {}
-                return res.json({ code: 0, data: result, source: 'sql' });
-            }
-        } catch (e) {}
+                const expandWords = [];
+                for (const [word, syns] of Object.entries(expandMap)) {
+                    if (question_text.includes(word)) expandWords.push(word, ...syns);
+                }
+                if (expandWords.length > 0) {
+                    // 只匹配 question_text 列（精确匹配问题主题）
+                    const conditions = expandWords.map((_, i) => `question_text LIKE @ew${i}`).join(' OR ');
+                    const req = pool.request();
+                    expandWords.forEach((w, i) => req.input(`ew${i}`, sql.NVarChar, `%${w}%`));
+                    const r = await req.query(`SELECT TOP 3 question_text, answer_text, category
+                        FROM knowledge_base WHERE is_active = 1 AND (${conditions})
+                        ORDER BY hit_count DESC`);
+                    const existingTexts = new Set(knowledge.map(k => k.substring(0, 20)));
+                    for (const row of r.recordset) {
+                        const item = `【${row.category || '通用'}】${row.question_text}：${row.answer_text}`;
+                        if (!existingTexts.has(item.substring(0, 20))) {
+                            knowledge.push(item);
+                            existingTexts.add(item.substring(0, 20));
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // 4. 图谱和KB都没有结果时，搜索历史问答（严格匹配）
+        if (knowledge.length === 0) {
+            try {
+                const pool = await getPool();
+                const r = await pool.request()
+                    .input('q', sql.NVarChar, qClean)
+                    .query(`SELECT TOP 1 q.question_text, a.answer_text, q.category
+                            FROM question q
+                            INNER JOIN answer a ON q.question_id = a.question_id
+                            WHERE q.status = 1 AND a.review_status = 1
+                            AND (q.question_text = @q OR q.question_text LIKE @q + '%' OR @q LIKE '%' + q.question_text + '%')
+                            ORDER BY q.created_at DESC`);
+                if (r.recordset.length > 0) {
+                    const row = r.recordset[0];
+                    knowledge = [`【${row.category || '历史回答'}】${row.question_text}：${row.answer_text}`];
+                }
+            } catch (e) {}
+        }
+
+        // 5. SQL 精确匹配时直接返回（跳过 LLM）
+        // 但跳过占位回答（"正在整理中"类），让 LLM 生成实质内容
+        const placeholderKeywords = ['正在整理', '暂未收录', '正在收集', '待补充'];
+        if (knowledge.length > 0) {
+            try {
+                const pool = await getPool();
+                const exact = await pool.request()
+                    .input('q', sql.NVarChar, `%${qClean}%`)
+                    .query(`SELECT TOP 1 answer_text, category FROM knowledge_base
+                            WHERE is_active = 1
+                            AND (question_text LIKE @q OR keywords LIKE @q)
+                            ORDER BY hit_count DESC`);
+                if (exact.recordset.length > 0) {
+                    const kb = exact.recordset[0];
+                    // 如果是占位回答，跳过直接返回，交给 LLM 生成
+                    const isPlaceholder = placeholderKeywords.some(kw => kb.answer_text.includes(kw));
+                    if (!isPlaceholder) {
+                        const result = {
+                            question_id: Date.now(),
+                            channel: 1,
+                            answer: kb.answer_text,
+                            category: kb.category || '知识库',
+                            source: 'sql_exact'
+                        };
+                        try { await redis.setex(`qa:${qClean}`, CACHE_TTL, JSON.stringify(result)); } catch (e) {}
+                        return res.json({ code: 0, data: result, source: 'sql' });
+                    }
+                }
+            } catch (e) {}
+        }
 
         // 4. 组装知识上下文
         const context = knowledge.length > 0
@@ -82,35 +155,71 @@ router.post('/ask', async (req, res) => {
             }
         }
 
-        const hasKnowledge = knowledge.length > 0;
+        // 判断是否需要记录到待回答（回答为未收录兜底文案时记录）
+        const fallbackKeywords = ['还没有被收录', '后续会逐步解答', '后续会有更详细', '已经被记录', '已经记下', '暂时没有明确', '暂时无法回答', '记下来啦', '记下啦'];
+        const isUn收录 = fallbackKeywords.some(kw => answer.includes(kw));
 
-        // 6. 知识库为空时记录待回答
-        if (!hasKnowledge) {
+        // 6. 未收录时记录待回答；有实质回答时自动入库
+        if (isUn收录) {
             try {
                 const pool = await getPool();
-                const qResult = await pool.request()
-                    .input('uid', sql.Int, user_id || 0)
-                    .input('qt', sql.NVarChar, question_text)
-                    .query(`INSERT INTO question (user_id, question_text, category, status)
-                            VALUES (@uid, @qt, '未分类', 0);
-                            SELECT SCOPE_IDENTITY() AS question_id`);
-                const questionId = qResult.recordset[0]?.question_id;
-                if (questionId) {
+                const req = pool.request();
+                // 去重
+                req.input('qt', sql.NVarChar, qClean);
+                const dup = await req.query(`SELECT TOP 1 question_id FROM question
+                            WHERE question_text LIKE '%' + @qt + '%' OR @qt LIKE '%' + question_text + '%'`);
+                if (dup.recordset.length === 0) {
+                    // 插入问题
+                    const insReq = pool.request();
+                    insReq.input('uid', sql.Int, user_id || 0);
+                    insReq.input('qt', sql.NVarChar, question_text);
+                    await insReq.query(`INSERT INTO question (user_id, question_text, category, status)
+                                VALUES (@uid, @qt, '未分类', 0)`);
+                    // 获取 question_id
+                    const idReq = pool.request();
+                    idReq.input('qt', sql.NVarChar, question_text);
+                    const idResult = await idReq.query('SELECT TOP 1 question_id FROM question WHERE question_text = @qt ORDER BY question_id DESC');
+                    const questionId = idResult.recordset[0]?.question_id;
+                    if (questionId) {
+                        // 创建 answer 记录（占位符，等待学生补充或管理员审核）
+                        try {
+                            const ansReq = pool.request();
+                            ansReq.input('qid', sql.Int, questionId);
+                            ansReq.input('ans', sql.NVarChar, '该问题的答案正在整理中，请稍后查看');
+                            await ansReq.query(`INSERT INTO answer (question_id, answer_text, source, review_status)
+                                        VALUES (@qid, @ans, 1, 0)`);
+                        } catch (e) { console.log('[QA] answer insert error:', e.message); }
+                    } else {
+                        console.log('[QA] question_id not found after insert');
+                    }
+                }
+            } catch (e) { console.log('[QA] 记录待回答失败:', e.message); }
+        } else if (knowledge.length > 0) {
+            // 有知识库数据且 LLM 生成了实质回答：自动入库
+            try {
+                const pool = await getPool();
+                const dup = await pool.request()
+                    .input('qt', sql.NVarChar, qClean)
+                    .query(`SELECT TOP 1 kb_id FROM knowledge_base
+                            WHERE is_active = 1 AND question_text LIKE @q`, { q: `%${qClean}%` });
+                if (dup.recordset.length === 0) {
                     await pool.request()
-                        .input('qid', sql.Int, questionId)
-                        .input('ans', sql.NVarChar, answer)
-                        .query(`INSERT INTO answer (question_id, answer_text, source, review_status)
-                                VALUES (@qid, @ans, 1, 1)`);
+                        .input('qt', sql.NVarChar, question_text)
+                        .input('at', sql.NVarChar, answer)
+                        .input('cat', sql.NVarChar, 'RAG自动生成')
+                        .input('src', sql.NVarChar, 'LLM生成')
+                        .query(`INSERT INTO knowledge_base (question_text, answer_text, category, source)
+                                VALUES (@qt, @at, @cat, @src)`);
                 }
             } catch (e) {}
         }
 
         const result = {
             question_id: Date.now(),
-            channel: hasKnowledge ? 1 : 2,
+            channel: isUn收录 ? 2 : 1,
             answer,
-            category: hasKnowledge ? '知识库' : 'AI回答',
-            source: hasKnowledge ? 'rag' : 'llm'
+            category: isUn收录 ? 'AI回答' : '知识库',
+            source: isUn收录 ? 'llm' : 'rag'
         };
 
         try { await redis.setex(`qa:${qClean}`, CACHE_TTL, JSON.stringify(result)); } catch (e) {}
@@ -159,8 +268,10 @@ router.get('/pending', async (req, res) => {
         const result = await pool.request()
             .query(`SELECT q.question_id, q.question_text, q.category, q.created_at,
                     u.nickname AS asker_name
-                    FROM question q LEFT JOIN [user] u ON q.user_id = u.user_id
-                    WHERE q.status = 0 ORDER BY q.created_at ASC`);
+                    FROM question q
+                    LEFT JOIN [user] u ON q.user_id = u.user_id
+                    WHERE q.status = 0
+                    ORDER BY q.created_at DESC`);
         res.json({ code: 0, data: result.recordset });
     } catch (err) {
         res.status(500).json({ code: -1, msg: err.message });

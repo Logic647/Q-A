@@ -185,11 +185,13 @@ Page({
             const res = await app.request('/qa/ask', 'POST', { user_id: uid, question_text: text });
             let answer = '网络异常，请稍后重试。';
             let category = '';
+            let questionId = 0;
             if (res.code === 0 && res.data && res.data.answer) {
                 answer = res.data.answer.replace(/\\n/g, '\n');
                 category = res.data.category || '';
+                questionId = res.data.question_id || 0;
             }
-            const botMsg = { id: ++msgId, role: 'bot', text: answer, time: this._fmtTime(), category };
+            const botMsg = { id: ++msgId, role: 'bot', text: answer, time: this._fmtTime(), category, questionId };
             this.data.messages.push(botMsg);
             this.updateSuggestions(category);
         } catch (e) {
@@ -225,7 +227,48 @@ Page({
 
     // ========== 导航 ==========
     goToAdmin() { this.setData({ showMenu: false }); wx.navigateTo({ url: '/pages/admin/admin' }); },
-    goToAnswer() { this.setData({ showMenu: false }); wx.navigateTo({ url: '/pages/answer/answer' }); },
+    async goToAnswer() {
+        this.setData({ showMenu: false });
+        // 先刷新用户认证状态
+        try {
+            const uid = app.globalData.userInfo ? app.globalData.userInfo.user_id : 0;
+            if (uid) {
+                const res = await app.request(`/user/info/${uid}`);
+                if (res.code === 0 && res.data) {
+                    app.globalData.userInfo = res.data;
+                    wx.setStorageSync('userInfo', res.data);
+                }
+            }
+        } catch (e) {}
+        const user = app.globalData.userInfo;
+        if (!user || user.auth_status !== 1) {
+            wx.showModal({
+                title: '需要认证',
+                content: '回答问题需要先完成学生身份认证',
+                confirmText: '去认证',
+                success: (r) => { if (r.confirm) wx.navigateTo({ url: '/pages/verify/verify' }); }
+            });
+            return;
+        }
+        wx.navigateTo({ url: '/pages/answer/answer' });
+    },
+    goToVerify() { this.setData({ showMenu: false }); wx.navigateTo({ url: '/pages/verify/verify' }); },
+
+    // ========== 评分 ==========
+    onFeedback(e) {
+        const { idx, score } = e.currentTarget.dataset;
+        const msg = this.data.messages[idx];
+        if (!msg || msg.rated) return;
+        this.data.messages[idx].rated = true;
+        this.data.messages[idx].score = score;
+        this.setData({ messages: this.data.messages });
+        const userId = app.globalData.userInfo ? app.globalData.userInfo.user_id : 0;
+        // 使用 question_id 作为 answer_id 的近似标识（后端可按 question_id 关联）
+        app.request('/qa/feedback', 'POST', {
+            answer_id: msg.questionId || msg.id, user_id: userId,
+            score: score === 1 ? 5 : 2, comment: ''
+        }).catch(() => {});
+    },
 
     onLogout() {
         wx.showModal({

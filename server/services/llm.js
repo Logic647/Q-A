@@ -39,8 +39,10 @@ function callLLM(body) {
             res.on('end', () => {
                 try {
                     const json = JSON.parse(data);
-                    if (json.choices && json.choices[0]?.message?.content) {
-                        resolve(json.choices[0].message.content);
+                    if (json.choices && json.choices[0]) {
+                        const msg = json.choices[0].message;
+                        // 优先取 content，没有则取 reasoning_content
+                        resolve(msg.content || msg.reasoning_content || '');
                     } else {
                         resolve('');
                     }
@@ -100,4 +102,34 @@ async function askLLM(question, context = '') {
     return '';
 }
 
-module.exports = { askLLM };
+// 规则提取关键词（从问题中提取核心名词）
+function extractKeywordsRule(question) {
+    const stopWords = ['学校', '我们', '的', '吗', '呢', '啊', '吧', '是', '有', '在', '能', '可以', '怎么', '如何', '什么', '哪里', '几个', '多少', '有没有', '怎么样', '好不好', '从', '到', '去'];
+    const clean = question.replace(/[？?！!。，,、\s\?]/g, '');
+
+    // 提取整个清洗后的问题作为主搜索词
+    const keywords = [clean];
+
+    // 同义词扩展
+    const SYNONYMS = {
+        '售货机': ['自动售货', '贩卖机', '自动贩卖'],
+        '饮料': ['饮品', '奶茶'],
+        '咖啡': ['咖啡厅', '咖啡店', '咖啡机'],
+        '上床下桌': ['床位', '床铺', '宿舍布局'],
+        '空调': ['冷气', '暖气'],
+        '开门': ['开放时间', '营业时间', '几点开'],
+        '怎么去': ['路线', '如何到达', '坐车'],
+        '学费': ['费用', '收费', '多少钱'],
+        '食堂': ['餐厅', '饭堂', '吃饭'],
+    };
+
+    for (const [word, synonyms] of Object.entries(SYNONYMS)) {
+        if (clean.includes(word)) {
+            synonyms.forEach(s => { if (!keywords.includes(s)) keywords.push(s); });
+        }
+    }
+
+    return keywords.slice(0, 5);
+}
+
+module.exports = { askLLM, extractKeywordsRule };

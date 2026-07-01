@@ -1,0 +1,52 @@
+<view class="page">
+  <view class="header">
+    <view class="header-left" bindtap="goBack"><text class="back-icon">←</text></view>
+    <view class="header-title">学生身份认证</view>
+    <view class="header-right"></view>
+  </view>
+
+  <scroll-view class="content" scroll-y>
+    <!-- 已认证 -->
+    <view class="status-card done" wx:if="{{authStatus === 1}}">
+      <view class="status-icon">✅</view>
+      <text class="status-text">认证已通过</text>
+      <text class="status-sub">你已获得回答问题的权限</text>
+    </view>
+
+    <!-- 待审核 -->
+    <view class="status-card pending" wx:elif="{{verifyStatus === 0}}">
+      <view class="status-icon">⏳</view>
+      <text class="status-text">审核中</text>
+      <text class="status-sub">认证申请已提交，管理员正在审核</text>
+    </view>
+
+    <!-- 认证表单 -->
+    <view class="form-card" wx:else>
+      <view class="form-title">上传证件照片</view>
+      <view class="form-desc">请上传校园卡或学生证照片，管理员将在1-2个工作日内审核</view>
+
+      <view class="form-item">
+        <text class="form-label">真实姓名</text>
+        <input class="form-input" placeholder="请输入真实姓名" value="{{realName}}" bindinput="onNameInput" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">学号</text>
+        <input class="form-input" placeholder="请输入学号" value="{{studentId}}" bindinput="onSidInput" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">证件照片</text>
+        <view class="upload-area" bindtap="chooseImage">
+          <image wx:if="{{imageUrl}}" class="upload-preview" src="{{imageUrl}}" mode="aspectFill" />
+          <view wx:else class="upload-placeholder">
+            <text class="upload-icon">📷</text>
+            <text class="upload-text">点击上传校园卡或学生证</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="submit-btn {{canSubmit ? 'active' : ''}}" bindtap="onSubmit">提交认证</view>
+    </view>
+  </scroll-view>
+</view>

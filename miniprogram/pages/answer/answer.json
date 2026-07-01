@@ -1,4 +1,5 @@
 {
-  "navigationBarTitleText": "回答问题",
+  "navigationBarTitleText": "",
+  "navigationStyle": "custom",
   "usingComponents": {}
 }

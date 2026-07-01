@@ -34,6 +34,9 @@
       <view class="sidebar-menu-item" bindtap="goToAnswer">
         <text class="menu-icon">✏️</text><text>回答问题</text>
       </view>
+      <view class="sidebar-menu-item" bindtap="goToVerify">
+        <text class="menu-icon">🪪</text><text>身份认证</text>
+      </view>
       <view class="sidebar-menu-item" bindtap="goToAdmin">
         <text class="menu-icon">⚙️</text><text>管理后台</text>
       </view>
@@ -95,6 +98,14 @@
             <text user-select>{{item.text}}</text>
           </view>
           <text class="msg-time {{item.role}}">{{item.time}}</text>
+          <!-- 评分条：仅在机器人回答后且未评分时显示 -->
+          <view class="feedback-bar" wx:if="{{item.role === 'bot' && !item.rated && item.text.length > 5}}">
+            <text class="feedback-label">有帮助吗？</text>
+            <view class="feedback-btns">
+              <view class="fbtn good {{item.score === 1 ? 'active' : ''}}" catchtap="onFeedback" data-idx="{{index}}" data-score="1">👍</view>
+              <view class="fbtn bad {{item.score === -1 ? 'active' : ''}}" catchtap="onFeedback" data-idx="{{index}}" data-score="-1">👎</view>
+            </view>
+          </view>
         </view>
       </view>
 

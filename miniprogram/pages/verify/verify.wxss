@@ -1,0 +1,29 @@
+.page { height: 100vh; display: flex; flex-direction: column; background: #fafafa; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 24rpx; background: #fff; border-bottom: 1rpx solid #f0f0f0; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
+.header-left { padding: 12rpx; }
+.back-icon { font-size: 36rpx; color: #333; }
+.header-title { font-size: 34rpx; font-weight: 600; color: #111; }
+.header-right { width: 64rpx; }
+.content { flex: 1; padding: 24rpx; }
+
+.status-card { background: #fff; border-radius: 16rpx; padding: 60rpx 40rpx; text-align: center; margin-bottom: 24rpx; }
+.status-icon { font-size: 80rpx; margin-bottom: 20rpx; display: block; }
+.status-text { font-size: 32rpx; font-weight: 600; color: #111; display: block; margin-bottom: 12rpx; }
+.status-sub { font-size: 26rpx; color: #999; display: block; }
+
+.form-card { background: #fff; border-radius: 16rpx; padding: 32rpx; }
+.form-title { font-size: 32rpx; font-weight: 600; color: #111; margin-bottom: 8rpx; }
+.form-desc { font-size: 24rpx; color: #999; margin-bottom: 32rpx; line-height: 1.5; }
+.form-item { margin-bottom: 28rpx; }
+.form-label { font-size: 26rpx; color: #333; font-weight: 500; margin-bottom: 12rpx; display: block; }
+.form-input { border: 1rpx solid #e5e7eb; border-radius: 10rpx; padding: 20rpx; font-size: 28rpx; }
+
+.upload-area { width: 100%; height: 300rpx; border: 2rpx dashed #d1d5db; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.upload-area:active { background: #f9fafb; }
+.upload-preview { width: 100%; height: 100%; }
+.upload-placeholder { display: flex; flex-direction: column; align-items: center; }
+.upload-icon { font-size: 48rpx; margin-bottom: 12rpx; }
+.upload-text { font-size: 24rpx; color: #999; }
+
+.submit-btn { margin-top: 40rpx; height: 88rpx; line-height: 88rpx; text-align: center; border-radius: 12rpx; font-size: 30rpx; font-weight: 500; background: #f0f0f0; color: #ccc; }
+.submit-btn.active { background: #333; color: #fff; }

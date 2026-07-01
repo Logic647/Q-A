@@ -1,47 +1,52 @@
-<view class="answer-container">
-  <view class="answer-header">
-    <text class="answer-title">待回答问题</text>
-    <text class="answer-count">共 {{pendingList.length}} 个问题</text>
+<view class="page">
+  <!-- 顶栏 -->
+  <view class="header">
+    <view class="header-left" bindtap="goBack">
+      <text class="back-icon">←</text>
+    </view>
+    <view class="header-title">回答问题</view>
+    <view class="header-count">{{pendingList.length}} 个待回答</view>
   </view>
 
-  <view class="empty-tip" wx:if="{{pendingList.length === 0 && !loading}}">
-    <text class="empty-icon">📭</text>
-    <text class="empty-text">暂无待回答问题</text>
-  </view>
+  <scroll-view class="content" scroll-y>
+    <view class="empty-state" wx:if="{{pendingList.length === 0 && !loading}}">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">暂无待回答问题</text>
+      <text class="empty-sub">新问题会在聊天中被自动收录</text>
+    </view>
 
-  <!-- 问题列表 -->
-  <view class="question-list">
-    <view class="question-item" wx:for="{{pendingList}}" wx:key="question_id" bindtap="onSelectQuestion" data-id="{{item.question_id}}" data-text="{{item.question_text}}">
-      <view class="question-header">
-        <view class="question-category">{{item.category}}</view>
-        <text class="question-time">{{item.created_at}}</text>
+    <view class="q-card" wx:for="{{pendingList}}" wx:key="question_id"
+          bindtap="onSelectQuestion" data-id="{{item.question_id}}" data-text="{{item.question_text}}">
+      <view class="q-top">
+        <text class="q-category">{{item.category || '未分类'}}</text>
+        <text class="q-time">{{item.created_at}}</text>
       </view>
-      <view class="question-text">{{item.question_text}}</view>
-      <view class="question-footer">
-        <text class="asker-name">提问者：{{item.asker_name || '匿名新生'}}</text>
-        <text class="answer-btn">去回答 →</text>
+      <text class="q-text">{{item.question_text}}</text>
+      <view class="q-bottom">
+        <text class="q-asker">来自：{{item.asker_name || '匿名新生'}}</text>
+        <text class="q-action">去回答 →</text>
       </view>
     </view>
-  </view>
+  </scroll-view>
 
   <!-- 回答弹窗 -->
   <view class="modal-mask" wx:if="{{showAnswerModal}}" bindtap="closeModal"></view>
   <view class="answer-modal {{showAnswerModal ? 'show' : ''}}">
     <view class="modal-header">
       <text class="modal-title">回答问题</text>
-      <text class="modal-close" bindtap="closeModal">✕</text>
+      <text class="modal-close" bindtap="closeModal">×</text>
     </view>
     <view class="modal-question">
       <text class="q-label">问题：</text>
-      <text class="q-text">{{currentQuestion}}</text>
+      <text class="q-body">{{currentQuestion}}</text>
     </view>
     <view class="modal-body">
       <textarea class="answer-input" placeholder="请输入你的回答..." value="{{answerText}}" bindinput="onAnswerInput" maxlength="500"></textarea>
       <text class="char-count">{{answerText.length}}/500</text>
     </view>
     <view class="modal-footer">
-      <button class="btn-cancel" bindtap="closeModal">取消</button>
-      <button class="btn-submit" type="primary" bindtap="submitAnswer" disabled="{{!answerText}}">提交回答</button>
+      <view class="modal-btn cancel" bindtap="closeModal">取消</view>
+      <view class="modal-btn submit {{answerText ? 'active' : ''}}" bindtap="submitAnswer">提交回答</view>
     </view>
   </view>
 </view>

@@ -1,200 +1,41 @@
-.answer-container {
-  padding: 20rpx;
-  background: #f5f5f5;
-  min-height: 100vh;
-}
+.page { height: 100vh; display: flex; flex-direction: column; background: #fafafa; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 24rpx; background: #fff; border-bottom: 1rpx solid #f0f0f0; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
+.header-left { padding: 12rpx; }
+.back-icon { font-size: 36rpx; color: #333; }
+.header-title { font-size: 34rpx; font-weight: 600; color: #111; }
+.header-count { font-size: 24rpx; color: #999; }
+.content { flex: 1; padding: 20rpx 24rpx; }
 
-.answer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20rpx 0;
-}
+.empty-state { display: flex; flex-direction: column; align-items: center; padding-top: 200rpx; }
+.empty-icon { font-size: 80rpx; margin-bottom: 20rpx; }
+.empty-text { font-size: 30rpx; color: #999; }
+.empty-sub { font-size: 24rpx; color: #ccc; margin-top: 8rpx; }
 
-.answer-title {
-  font-size: 36rpx;
-  font-weight: bold;
-  color: #333;
-}
+.q-card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 16rpx; }
+.q-card:active { background: #f9f9f9; }
+.q-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
+.q-category { font-size: 22rpx; color: #555; background: #f0f0f0; padding: 4rpx 12rpx; border-radius: 8rpx; }
+.q-time { font-size: 22rpx; color: #bbb; }
+.q-text { font-size: 30rpx; color: #111; font-weight: 500; line-height: 1.5; margin-bottom: 12rpx; display: block; }
+.q-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1rpx solid #f0f0f0; padding-top: 12rpx; }
+.q-asker { font-size: 24rpx; color: #999; }
+.q-action { font-size: 24rpx; color: #333; font-weight: 500; }
 
-.answer-count {
-  font-size: 24rpx;
-  color: #999;
-}
-
-.empty-tip {
-  text-align: center;
-  padding: 100rpx 0;
-}
-
-.empty-icon {
-  font-size: 80rpx;
-  display: block;
-  margin-bottom: 20rpx;
-}
-
-.empty-text {
-  font-size: 28rpx;
-  color: #999;
-}
-
-.question-item {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  margin-bottom: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05);
-}
-
-.question-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12rpx;
-}
-
-.question-category {
-  font-size: 22rpx;
-  color: #555;
-  background: #f0f0f0;
-  padding: 4rpx 16rpx;
-  border-radius: 8rpx;
-}
-
-.question-time {
-  font-size: 22rpx;
-  color: #999;
-}
-
-.question-text {
-  font-size: 30rpx;
-  color: #333;
-  font-weight: bold;
-  margin-bottom: 16rpx;
-  line-height: 1.5;
-}
-
-.question-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1rpx solid #eee;
-  padding-top: 12rpx;
-}
-
-.asker-name {
-  font-size: 24rpx;
-  color: #666;
-}
-
-.answer-btn {
-  font-size: 24rpx;
-  color: #333;
-  font-weight: 500;
-}
-
-/* Modal styles */
-.modal-mask {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 99;
-}
-
-.answer-modal {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #fff;
-  border-radius: 24rpx 24rpx 0 0;
-  z-index: 100;
-  transform: translateY(100%);
-  transition: transform 0.3s;
-  max-height: 80vh;
-}
-
-.answer-modal.show {
-  transform: translateY(0);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24rpx;
-  border-bottom: 1rpx solid #eee;
-}
-
-.modal-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-}
-
-.modal-close {
-  font-size: 36rpx;
-  color: #999;
-  padding: 10rpx;
-}
-
-.modal-question {
-  padding: 20rpx 24rpx;
-  background: #f9f9f9;
-  border-bottom: 1rpx solid #eee;
-}
-
-.q-label {
-  font-size: 24rpx;
-  color: #666;
-}
-
-.q-text {
-  font-size: 28rpx;
-  color: #333;
-  font-weight: bold;
-  margin-top: 8rpx;
-}
-
-.modal-body {
-  padding: 24rpx;
-}
-
-.answer-input {
-  width: 100%;
-  height: 200rpx;
-  border: 1rpx solid #ddd;
-  border-radius: 12rpx;
-  padding: 16rpx;
-  font-size: 28rpx;
-  box-sizing: border-box;
-}
-
-.char-count {
-  display: block;
-  text-align: right;
-  font-size: 22rpx;
-  color: #999;
-  margin-top: 8rpx;
-}
-
-.modal-footer {
-  display: flex;
-  padding: 20rpx 24rpx 40rpx;
-  gap: 20rpx;
-}
-
-.btn-cancel {
-  flex: 1;
-  background: #f5f5f5 !important;
-  color: #666 !important;
-}
-
-.btn-submit {
-  flex: 1;
-  background: #333 !important;
-  color: #fff !important;
-}
+/* 弹窗 */
+.modal-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 99; }
+.answer-modal { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-radius: 24rpx 24rpx 0 0; z-index: 100; transform: translateY(100%); transition: transform 0.3s; max-height: 80vh; display: flex; flex-direction: column; }
+.answer-modal.show { transform: translateY(0); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 32rpx; border-bottom: 1rpx solid #f0f0f0; }
+.modal-title { font-size: 32rpx; font-weight: 600; color: #111; }
+.modal-close { font-size: 40rpx; color: #999; padding: 8rpx; }
+.modal-question { padding: 20rpx 32rpx; background: #fafafa; border-bottom: 1rpx solid #f0f0f0; }
+.q-label { font-size: 24rpx; color: #999; }
+.q-body { font-size: 28rpx; color: #111; font-weight: 500; margin-top: 6rpx; display: block; }
+.modal-body { padding: 24rpx 32rpx; flex: 1; }
+.answer-input { width: 100%; height: 200rpx; border: 1rpx solid #e5e7eb; border-radius: 12rpx; padding: 20rpx; font-size: 28rpx; box-sizing: border-box; }
+.char-count { display: block; text-align: right; font-size: 22rpx; color: #ccc; margin-top: 8rpx; }
+.modal-footer { display: flex; padding: 20rpx 32rpx 40rpx; gap: 20rpx; }
+.modal-btn { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 12rpx; font-size: 28rpx; font-weight: 500; }
+.modal-btn.cancel { background: #f5f5f5; color: #666; }
+.modal-btn.submit { background: #f0f0f0; color: #ccc; }
+.modal-btn.submit.active { background: #333; color: #fff; }

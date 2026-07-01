@@ -1,109 +1,147 @@
-<view class="admin-container">
-  <view class="admin-header">
-    <text class="admin-title">管理后台</text>
+<view class="page">
+  <view class="header">
+    <view class="header-left" bindtap="goBack"><text class="back-icon">←</text></view>
+    <view class="header-title">管理后台</view>
+    <view class="header-right"></view>
   </view>
 
-  <!-- 统计概览 -->
-  <view class="stats-card">
-    <view class="stats-title">数据概览</view>
-    <view class="stats-grid">
-      <view class="stat-item">
-        <text class="stat-num">{{stats.questions.total || 0}}</text>
-        <text class="stat-label">总问题数</text>
-      </view>
-      <view class="stat-item">
-        <text class="stat-num">{{stats.answers.total || 0}}</text>
-        <text class="stat-label">总回答数</text>
-      </view>
-      <view class="stat-item">
-        <text class="stat-num">{{stats.knowledge_base.total || 0}}</text>
-        <text class="stat-label">知识库条目</text>
-      </view>
-      <view class="stat-item">
-        <text class="stat-num">{{stats.low_score_count || 0}}</text>
-        <text class="stat-label">低分回答</text>
-      </view>
+  <scroll-view class="content" scroll-y>
+    <view class="tabs">
+      <view class="tab {{activeTab === 0 ? 'active' : ''}}" bindtap="switchTab" data-tab="0">概览</view>
+      <view class="tab {{activeTab === 1 ? 'active' : ''}}" bindtap="switchTab" data-tab="1">审核</view>
+      <view class="tab {{activeTab === 2 ? 'active' : ''}}" bindtap="switchTab" data-tab="2">用户</view>
+      <view class="tab {{activeTab === 3 ? 'active' : ''}}" bindtap="switchTab" data-tab="3">知识库</view>
+      <view class="tab {{activeTab === 4 ? 'active' : ''}}" bindtap="switchTab" data-tab="4">低分</view>
     </view>
-  </view>
 
-  <!-- 待审核列表 -->
-  <view class="section-card">
-    <view class="section-title">
-      <text>待审核回答</text>
-      <text class="section-count">({{pendingList.length}})</text>
-    </view>
-    <view class="empty-tip" wx:if="{{pendingList.length === 0}}">暂无待审核内容</view>
-    <view class="pending-item" wx:for="{{pendingList}}" wx:key="answer_id">
-      <view class="pending-header">
-        <text class="pending-q">问题：{{item.question_text}}</text>
-        <text class="pending-category">{{item.category}}</text>
+    <!-- 概览 -->
+    <view wx:if="{{activeTab === 0}}">
+      <view class="stats-grid">
+        <view class="stat-card"><text class="stat-num">{{stats.questions.total || 0}}</text><text class="stat-label">总问题</text><text class="stat-sub">{{stats.questions.pending || 0}} 待回答</text></view>
+        <view class="stat-card"><text class="stat-num">{{stats.answers.total || 0}}</text><text class="stat-label">总回答</text><text class="stat-sub">{{stats.answers.auto_count || 0}} AI / {{stats.answers.manual_count || 0}} 人工</text></view>
+        <view class="stat-card"><text class="stat-num">{{stats.knowledge_base.total || 0}}</text><text class="stat-label">知识库</text></view>
+        <view class="stat-card warn"><text class="stat-num">{{stats.low_score_count || 0}}</text><text class="stat-label">低分回答</text></view>
       </view>
-      <view class="pending-answer">{{item.answer_text}}</view>
-      <view class="pending-meta">
-        <text>回答者：{{item.responder_name || '匿名'}}</text>
-        <text>{{item.created_at}}</text>
-      </view>
-      <view class="pending-actions">
-        <button class="btn-pass" size="mini" bindtap="onApprove" data-id="{{item.answer_id}}">通过</button>
-        <button class="btn-reject" size="mini" bindtap="onReject" data-id="{{item.answer_id}}">拒绝</button>
+      <view class="quick-stats">
+        <view class="qs-item"><text class="qs-num">{{verifyList.length}}</text><text class="qs-label">待认证</text></view>
+        <view class="qs-item"><text class="qs-num">{{pendingList.length}}</text><text class="qs-label">待审核</text></view>
+        <view class="qs-item"><text class="qs-num">{{verifiedList.length}}</text><text class="qs-label">已认证</text></view>
       </view>
     </view>
-  </view>
 
-  <!-- 低分回答列表 -->
-  <view class="section-card">
-    <view class="section-title">
-      <text>低分回答</text>
-      <text class="section-count">({{lowScoreList.length}})</text>
-    </view>
-    <view class="empty-tip" wx:if="{{lowScoreList.length === 0}}">暂无低分回答</view>
-    <view class="low-score-item" wx:for="{{lowScoreList}}" wx:key="answer_id">
-      <view class="low-header">
-        <text class="low-q">{{item.question_text}}</text>
-        <text class="low-score">评分：{{item.avg_score}} ({{item.score_count}}人)</text>
+    <!-- 审核 -->
+    <view wx:if="{{activeTab === 1}}">
+      <view class="section-card">
+        <view class="section-title"><text>身份认证（{{verifyList.length}}）</text></view>
+        <view class="empty-tip" wx:if="{{verifyList.length === 0}}">暂无</view>
+        <view class="item-card" wx:for="{{verifyList}}" wx:key="verify_id">
+          <view class="item-top"><text class="item-name">{{item.real_name}}</text><text class="item-id">{{item.student_id}}</text></view>
+          <text class="item-sub">来自：{{item.nickname || '匿名'}} · {{item.created_at}}</text>
+          <image wx:if="{{item.image_url}}" class="verify-img" src="{{item.image_url}}" mode="aspectFit" bindtap="previewImage" data-url="{{item.image_url}}" />
+          <input class="remark-input" placeholder="审核备注（可选）" value="{{item._remark}}" bindinput="onRemarkInput" data-vid="{{item.verify_id}}" />
+          <view class="item-actions">
+            <view class="action-btn pass" bindtap="onVerifyApprove" data-vid="{{item.verify_id}}" data-uid="{{item.user_id}}">通过</view>
+            <view class="action-btn reject" bindtap="onVerifyReject" data-vid="{{item.verify_id}}" data-uid="{{item.user_id}}">拒绝</view>
+          </view>
+        </view>
       </view>
-      <view class="low-answer">{{item.answer_text}}</view>
-    </view>
-  </view>
-
-  <!-- 知识库管理 -->
-  <view class="section-card">
-    <view class="section-title">
-      <text>知识库管理</text>
-      <button class="btn-add" size="mini" bindtap="onAddKB">添加条目</button>
-    </view>
-    <view class="kb-item" wx:for="{{kbList}}" wx:key="kb_id">
-      <view class="kb-question">{{item.question_text}}</view>
-      <view class="kb-answer">{{item.answer_text}}</view>
-      <view class="kb-meta">
-        <text class="kb-category">{{item.category}}</text>
-        <text class="kb-hit">命中 {{item.hit_count}} 次</text>
+      <view class="section-card">
+        <view class="section-title"><text>回答审核（{{pendingList.length}}）</text></view>
+        <view class="empty-tip" wx:if="{{pendingList.length === 0}}">暂无</view>
+        <view class="item-card" wx:for="{{pendingList}}" wx:key="answer_id">
+          <view class="item-top"><text class="item-category">{{item.category}}</text><text class="item-time">{{item.created_at}}</text></view>
+          <text class="item-q">Q: {{item.question_text}}</text>
+          <text class="item-a">A: {{item.answer_text}}</text>
+          <text class="item-sub">回答者：{{item.responder_name || '匿名'}}</text>
+          <view class="item-actions">
+            <view class="action-btn pass" bindtap="onApprove" data-id="{{item.answer_id}}">通过</view>
+            <view class="action-btn reject" bindtap="onReject" data-id="{{item.answer_id}}">拒绝</view>
+          </view>
+        </view>
       </view>
     </view>
-  </view>
 
-  <!-- 添加知识库弹窗 -->
-  <view class="modal-mask" wx:if="{{showAddKB}}" bindtap="closeAddKB"></view>
-  <view class="modal {{showAddKB ? 'show' : ''}}">
+    <!-- 已认证用户 -->
+    <view wx:if="{{activeTab === 2}}">
+      <view class="section-card">
+        <view class="section-title"><text>已认证用户（{{verifiedList.length}}）</text></view>
+        <view class="empty-tip" wx:if="{{verifiedList.length === 0}}">暂无</view>
+        <view class="item-card" wx:for="{{verifiedList}}" wx:key="user_id">
+          <view class="item-top"><text class="item-name">{{item.nickname || '用户'}}</text><text class="item-id">{{item.student_id}}</text></view>
+          <text class="item-sub">姓名：{{item.real_name}} · 认证时间：{{item.verify_time}}</text>
+          <text class="item-sub" wx:if="{{item.remark}}">备注：{{item.remark}}</text>
+          <input class="remark-input" placeholder="添加/修改备注" value="{{item._remark}}" bindinput="onUserRemarkInput" data-uid="{{item.user_id}}" />
+          <view class="item-actions">
+            <view class="action-btn edit" bindtap="onSaveUserRemark" data-uid="{{item.user_id}}">保存备注</view>
+            <view class="action-btn reject" bindtap="onRevokeUser" data-uid="{{item.user_id}}">回收权限</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 知识库 -->
+    <view wx:if="{{activeTab === 3}}">
+      <view class="section-card">
+        <view class="section-title">
+          <text>知识库（{{kbList.length}}条）</text>
+          <view class="add-btn" bindtap="onAddKB">+ 添加</view>
+        </view>
+        <view class="empty-tip" wx:if="{{kbList.length === 0}}">暂无</view>
+        <view class="kb-item" wx:for="{{kbList}}" wx:key="kb_id">
+          <view class="kb-header"><text class="kb-cat">{{item.category}}</text><text class="kb-hit">命中{{item.hit_count}}次</text></view>
+          <text class="kb-q">{{item.question_text}}</text>
+          <text class="kb-a">{{item.answer_text}}</text>
+          <view class="kb-actions">
+            <view class="action-btn-sm edit" bindtap="onEditKB" data-item="{{item}}">编辑</view>
+            <view class="action-btn-sm del" bindtap="onDeleteKB" data-id="{{item.kb_id}}">删除</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 低分 -->
+    <view wx:if="{{activeTab === 4}}">
+      <view class="section-card">
+        <view class="section-title"><text>低分回答（{{lowScoreList.length}}）</text></view>
+        <view class="empty-tip" wx:if="{{lowScoreList.length === 0}}">暂无</view>
+        <view class="item-card" wx:for="{{lowScoreList}}" wx:key="answer_id">
+          <view class="item-top"><text class="item-category">{{item.category}}</text><text class="item-score">评分 {{item.avg_score}}</text></view>
+          <text class="item-q">Q: {{item.question_text}}</text>
+          <text class="item-a">A: {{item.answer_text}}</text>
+          <view class="item-actions">
+            <view class="action-btn reset" bindtap="onResetLowScore" data-qid="{{item.question_id}}">重置为待回答</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 知识库弹窗 -->
+  <view class="modal-mask" wx:if="{{showKBModal}}" bindtap="closeKBModal"></view>
+  <view class="kb-modal {{showKBModal ? 'show' : ''}}">
     <view class="modal-header">
-      <text class="modal-title">添加知识库条目</text>
+      <text class="modal-title">{{editingKB ? '编辑' : '添加'}}条目</text>
+      <text class="modal-close" bindtap="closeKBModal">×</text>
     </view>
     <view class="modal-body">
       <view class="form-item">
-        <text class="form-label">问题：</text>
-        <input class="form-input" placeholder="输入常见问题" value="{{newKB.question}}" bindinput="onKBQuestionInput" />
+        <text class="form-label">问题</text>
+        <input class="form-input" placeholder="常见问题" value="{{kbForm.question_text}}" bindinput="onKBInput" data-field="question_text" />
       </view>
       <view class="form-item">
-        <text class="form-label">回答：</text>
-        <textarea class="form-textarea" placeholder="输入标准答案" value="{{newKB.answer}}" bindinput="onKBAnswerInput"></textarea>
+        <text class="form-label">回答</text>
+        <textarea class="form-textarea" placeholder="标准答案" value="{{kbForm.answer_text}}" bindinput="onKBInput" data-field="answer_text"></textarea>
       </view>
       <view class="form-item">
-        <text class="form-label">分类：</text>
-        <picker bindchange="onCategoryChange" value="{{categoryIndex}}" range="{{categories}}">
-          <view class="picker-text">{{categories[categoryIndex]}}</view>
+        <text class="form-label">分类</text>
+        <picker bindchange="onKBCategoryChange" value="{{kbCategoryIndex}}" range="{{categories}}">
+          <view class="picker-val">{{categories[kbCategoryIndex]}}</view>
         </picker>
       </view>
-      <button class="btn-submit" type="primary" bindtap="submitKB">提交</button>
+      <view class="modal-btns">
+        <view class="mbtn cancel" bindtap="closeKBModal">取消</view>
+        <view class="mbtn confirm" bindtap="submitKB">保存</view>
+      </view>
     </view>
   </view>
 </view>

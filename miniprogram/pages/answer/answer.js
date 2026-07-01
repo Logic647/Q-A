@@ -14,6 +14,10 @@ Page({
         this.loadPendingQuestions();
     },
 
+    goBack() {
+        wx.navigateBack();
+    },
+
     async loadPendingQuestions() {
         this.setData({ loading: true });
         try {
@@ -22,7 +26,6 @@ Page({
                 this.setData({ pendingList: res.data || [] });
             }
         } catch (e) {
-            console.error('加载待回答问题失败:', e);
             wx.showToast({ title: '加载失败', icon: 'none' });
         }
         this.setData({ loading: false });
@@ -53,10 +56,12 @@ Page({
             return;
         }
 
+        const userId = app.globalData.userInfo ? app.globalData.userInfo.user_id : 0;
+
         try {
             const res = await app.request('/qa/answer', 'POST', {
                 question_id: currentQuestionId,
-                user_id: 0,
+                user_id: userId,
                 answer_text: answerText.trim()
             });
 
