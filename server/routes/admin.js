@@ -1,6 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const { sql, getPool } = require('../config/db');
+const embedding = require('../services/embedding');
+
+// 知识库入库后自动向量化
+async function autoVectorize(kbId, questionText, answerText, category) {
+    if (!embedding.isConfigured()) return;
+    try {
+        await embedding.addVector(kbId, `${questionText}：${answerText}`, {
+            id: kbId, question_text: questionText, answer_text: answerText, category
+        });
+    } catch (e) {
+        console.log('[AutoVector] 向量化失败:', e.message);
+    }
+}
 
 // ========== 数据统计 ==========
 router.get('/stats', async (req, res) => {
@@ -61,14 +74,27 @@ router.post('/review', async (req, res) => {
                         WHERE a.answer_id = @aid`);
             if (ans.recordset.length > 0) {
                 const row = ans.recordset[0];
-                // 写入知识库
-                await pool.request()
-                    .input('qt', sql.NVarChar, row.question_text)
-                    .input('at', sql.NVarChar, row.answer_text)
-                    .input('cat', sql.NVarChar, row.category || '未分类')
-                    .input('src', sql.NVarChar, '审核入库')
-                    .query(`INSERT INTO knowledge_base (question_text, answer_text, category, source)
-                            VALUES (@qt, @at, @cat, @src)`);
+                // 过滤占位回答和推理过程，只存实质内容
+                const badPatterns = ['正在整理', '暂未收录', '正在收集', '待补充', '首先，用户的问题是', '根据规则'];
+                const isBad = badPatterns.some(p => row.answer_text.includes(p));
+                if (!isBad) {
+                    await pool.request()
+                        .input('qt', sql.NVarChar, row.question_text)
+                        .input('at', sql.NVarChar, row.answer_text)
+                        .input('cat', sql.NVarChar, row.category || '未分类')
+                        .input('src', sql.NVarChar, '审核入库')
+                        .query(`INSERT INTO knowledge_base (question_text, answer_text, category, source)
+                                VALUES (@qt, @at, @cat, @src)`);
+                    // 自动向量化
+                    const kbResult = await pool.request()
+                        .input('qt', sql.NVarChar, row.question_text)
+                        .query('SELECT TOP 1 kb_id FROM knowledge_base WHERE question_text = @qt ORDER BY kb_id DESC');
+                    if (kbResult.recordset.length > 0) {
+                        await autoVectorize(kbResult.recordset[0].kb_id, row.question_text, row.answer_text, row.category);
+                    }
+                } else {
+                    console.log('[审核] 跳过占位/推理回答:', row.question_text);
+                }
                 // 同步更新问题状态为已回答
                 await pool.request()
                     .input('qid', sql.Int, row.question_id)
@@ -212,6 +238,13 @@ router.post('/kb/add', async (req, res) => {
             .input('src', sql.NVarChar, '管理员添加')
             .query(`INSERT INTO knowledge_base (question_text, answer_text, category, source, is_active)
                     VALUES (@qt, @at, @cat, @src, 1)`);
+        // 自动向量化
+        const kbResult = await pool.request()
+            .input('qt', sql.NVarChar, question_text)
+            .query('SELECT TOP 1 kb_id FROM knowledge_base WHERE question_text = @qt ORDER BY kb_id DESC');
+        if (kbResult.recordset.length > 0) {
+            await autoVectorize(kbResult.recordset[0].kb_id, question_text, answer_text, category);
+        }
         res.json({ code: 0, msg: '添加成功' });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -228,6 +261,8 @@ router.post('/kb/update', async (req, res) => {
             .input('cat', sql.NVarChar, category)
             .query(`UPDATE knowledge_base SET question_text = @qt, answer_text = @at, category = @cat
                     WHERE kb_id = @id`);
+        // 自动重新向量化
+        await autoVectorize(kb_id, question_text, answer_text, category);
         res.json({ code: 0, msg: '更新成功' });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -240,7 +275,121 @@ router.post('/kb/delete', async (req, res) => {
         await pool.request()
             .input('id', sql.Int, kb_id)
             .query('DELETE FROM knowledge_base WHERE kb_id = @id');
+        // 从向量索引中移除（通过重新构建或标记删除）
+        try { embedding.removeVector && embedding.removeVector(kb_id); } catch (e) {}
         res.json({ code: 0, msg: '删除成功' });
+    } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
+});
+
+// ========== 批量操作 ==========
+
+// 批量审核回答
+router.post('/review/batch', async (req, res) => {
+    try {
+        let { answer_ids, action, comment } = req.body;
+        if (!answer_ids || !Array.isArray(answer_ids) || answer_ids.length === 0) {
+            return res.json({ code: -1, msg: '请选择要审核的回答' });
+        }
+        answer_ids = answer_ids.map(id => parseInt(id));
+        const pool = await getPool();
+        let approved = 0, rejected = 0;
+        for (const aid of answer_ids) {
+            const status = action === 1 ? 1 : 2;
+            await pool.request()
+                .input('aid', sql.Int, aid)
+                .input('status', sql.TinyInt, status)
+                .query('UPDATE answer SET review_status = @status WHERE answer_id = @aid');
+            if (action === 1) {
+                const ans = await pool.request()
+                    .input('aid', sql.Int, aid)
+                    .query(`SELECT a.answer_text, a.question_id, q.question_text, q.category
+                            FROM answer a INNER JOIN question q ON a.question_id = q.question_id
+                            WHERE a.answer_id = @aid`);
+                if (ans.recordset.length > 0) {
+                    const row = ans.recordset[0];
+                    const badPatterns = ['正在整理', '暂未收录', '首先，用户的问题是', '根据规则'];
+                    const isBad = badPatterns.some(p => row.answer_text.includes(p));
+                    if (!isBad) {
+                        await pool.request()
+                            .input('qt', sql.NVarChar, row.question_text)
+                            .input('at', sql.NVarChar, row.answer_text)
+                            .input('cat', sql.NVarChar, row.category || '未分类')
+                            .input('src', sql.NVarChar, '审核入库')
+                            .query(`INSERT INTO knowledge_base (question_text, answer_text, category, source)
+                                    VALUES (@qt, @at, @cat, @src)`);
+                    }
+                    await pool.request()
+                        .input('qid', sql.Int, row.question_id)
+                        .query('UPDATE question SET status = 1 WHERE question_id = @qid');
+                    approved++;
+                }
+            } else {
+                rejected++;
+            }
+        }
+        res.json({ code: 0, msg: `批量${action === 1 ? '通过' : '拒绝'}: ${approved}条通过, ${rejected}条拒绝` });
+    } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
+});
+
+// 批量删除知识库
+router.post('/kb/delete-batch', async (req, res) => {
+    try {
+        let { kb_ids } = req.body;
+        if (!kb_ids || !Array.isArray(kb_ids) || kb_ids.length === 0) {
+            return res.json({ code: -1, msg: '请选择要删除的条目' });
+        }
+        kb_ids = kb_ids.map(id => parseInt(id));
+        const pool = await getPool();
+        for (const id of kb_ids) {
+            await pool.request()
+                .input('id', sql.Int, id)
+                .query('DELETE FROM knowledge_base WHERE kb_id = @id');
+            try { embedding.removeVector && embedding.removeVector(id); } catch (e) {}
+        }
+        res.json({ code: 0, msg: `已删除 ${kb_ids.length} 条` });
+    } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
+});
+
+// ========== 待回答问题管理 ==========
+
+// 获取所有待回答问题
+router.get('/pending-questions', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .query(`SELECT q.question_id, q.question_text, q.category, q.status, q.created_at,
+                    u.nickname AS asker_name,
+                    (SELECT TOP 1 a.answer_text FROM answer a WHERE a.question_id = q.question_id) AS answer_text
+                    FROM question q
+                    LEFT JOIN [user] u ON q.user_id = u.user_id
+                    WHERE q.status = 0
+                    ORDER BY q.created_at DESC`);
+        res.json({ code: 0, data: result.recordset });
+    } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
+});
+
+// 删除待回答问题
+router.post('/pending-questions/delete', async (req, res) => {
+    try {
+        let { question_ids } = req.body;
+        if (!question_ids || !Array.isArray(question_ids) || question_ids.length === 0) {
+            return res.json({ code: -1, msg: '请选择要删除的问题' });
+        }
+        question_ids = question_ids.map(id => parseInt(id));
+        const pool = await getPool();
+        for (const qid of question_ids) {
+            // 先删 review（外键约束）
+            await pool.request()
+                .input('qid', sql.Int, qid)
+                .query(`DELETE FROM review WHERE answer_id IN (SELECT answer_id FROM answer WHERE question_id = @qid)`);
+            await pool.request()
+                .input('qid', sql.Int, qid)
+                .query('DELETE FROM answer WHERE question_id = @qid');
+            await pool.request()
+                .input('qid', sql.Int, qid)
+                .query('DELETE FROM question WHERE question_id = @qid');
+        }
+        res.json({ code: 0, msg: `已删除 ${question_ids.length} 个问题` });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
 

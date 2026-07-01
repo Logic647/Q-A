@@ -41,8 +41,8 @@ function callLLM(body) {
                     const json = JSON.parse(data);
                     if (json.choices && json.choices[0]) {
                         const msg = json.choices[0].message;
-                        // 优先取 content，没有则取 reasoning_content
-                        resolve(msg.content || msg.reasoning_content || '');
+                        // 只取 content，不用 reasoning_content（那是推理过程）
+                        resolve(msg.content || '');
                     } else {
                         resolve('');
                     }

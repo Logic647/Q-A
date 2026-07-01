@@ -5,6 +5,7 @@ const { askLLM } = require('../services/llm');
 const { extractKeywordsRule } = require('../services/llm');
 const redis = require('../config/redis');
 const { retrieveKnowledge } = require('../services/kg');
+const embedding = require('../services/embedding');
 
 const CACHE_TTL = 3600;
 
@@ -44,6 +45,25 @@ router.post('/ask', async (req, res) => {
         ]);
 
         let knowledge = [...graphKnowledge, ...sqlKnowledge];
+
+        // 3.5 向量语义搜索（Embedding）
+        if (knowledge.length < 2 && embedding.isConfigured()) {
+            try {
+                const queryVector = await embedding.getEmbedding(question_text);
+                if (queryVector) {
+                    const vectorResults = embedding.searchVectors(queryVector, 3);
+                    for (const vr of vectorResults) {
+                        const item = `【${vr.category || '向量匹配'}】${vr.question_text || vr.text}：${vr.answer_text || ''}`;
+                        const key = item.substring(0, 20);
+                        if (!knowledge.some(k => k.substring(0, 20) === key)) {
+                            knowledge.push(item);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('[Embedding] 搜索失败:', e.message);
+            }
+        }
 
         // 4. 同义词扩展检索
         if (knowledge.length < 2) {
@@ -107,36 +127,7 @@ router.post('/ask', async (req, res) => {
             } catch (e) {}
         }
 
-        // 5. SQL 精确匹配时直接返回（跳过 LLM）
-        // 但跳过占位回答（"正在整理中"类），让 LLM 生成实质内容
-        const placeholderKeywords = ['正在整理', '暂未收录', '正在收集', '待补充'];
-        if (knowledge.length > 0) {
-            try {
-                const pool = await getPool();
-                const exact = await pool.request()
-                    .input('q', sql.NVarChar, `%${qClean}%`)
-                    .query(`SELECT TOP 1 answer_text, category FROM knowledge_base
-                            WHERE is_active = 1
-                            AND (question_text LIKE @q OR keywords LIKE @q)
-                            ORDER BY hit_count DESC`);
-                if (exact.recordset.length > 0) {
-                    const kb = exact.recordset[0];
-                    // 如果是占位回答，跳过直接返回，交给 LLM 生成
-                    const isPlaceholder = placeholderKeywords.some(kw => kb.answer_text.includes(kw));
-                    if (!isPlaceholder) {
-                        const result = {
-                            question_id: Date.now(),
-                            channel: 1,
-                            answer: kb.answer_text,
-                            category: kb.category || '知识库',
-                            source: 'sql_exact'
-                        };
-                        try { await redis.setex(`qa:${qClean}`, CACHE_TTL, JSON.stringify(result)); } catch (e) {}
-                        return res.json({ code: 0, data: result, source: 'sql' });
-                    }
-                }
-            } catch (e) {}
-        }
+        // 5. 组装知识上下文，交给 LLM 生成回答（始终经过 LLM）
 
         // 4. 组装知识上下文
         const context = knowledge.length > 0
@@ -342,6 +333,43 @@ router.post('/suggest', async (req, res) => {
     } catch (err) {
         res.json({ code: 0, data: [] });
     }
+});
+
+// 构建向量索引（从知识库加载所有条目）
+router.post('/build-vector-index', async (req, res) => {
+    try {
+        if (!embedding.isConfigured()) {
+            return res.json({ code: -1, msg: '未配置 Embedding API Key' });
+        }
+        const pool = await getPool();
+        const result = await pool.request()
+            .query(`SELECT kb_id, question_text, answer_text, category
+                    FROM knowledge_base WHERE is_active = 1`);
+        const docs = result.recordset.map(r => ({
+            id: r.kb_id,
+            text: `${r.question_text}：${r.answer_text}`,
+            question_text: r.question_text,
+            answer_text: r.answer_text,
+            category: r.category
+        }));
+        const count = await embedding.buildVectorIndex(docs);
+        res.json({ code: 0, msg: `向量索引构建完成: ${count} 条` });
+    } catch (err) {
+        res.status(500).json({ code: -1, msg: err.message });
+    }
+});
+
+// 查询向量索引状态
+router.get('/vector-status', (req, res) => {
+    const configured = embedding.isConfigured();
+    res.json({
+        code: 0,
+        data: {
+            configured,
+            api_key_set: configured,
+            model: configured ? 'BAAI/bge-m3' : '未配置'
+        }
+    });
 });
 
 module.exports = router;
