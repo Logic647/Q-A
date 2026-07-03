@@ -193,7 +193,7 @@ Page({
             }
             const botMsg = { id: ++msgId, role: 'bot', text: answer, time: this._fmtTime(), category, questionId };
             this.data.messages.push(botMsg);
-            this.updateSuggestions(category);
+            this.updateSuggestions(category, text);
         } catch (e) {
             this.data.messages.push({
                 id: ++msgId, role: 'bot',
@@ -216,9 +216,9 @@ Page({
         });
     },
 
-    async updateSuggestions(category) {
+    async updateSuggestions(category, lastQuestion) {
         try {
-            const res = await app.request('/qa/suggest', 'POST', { category });
+            const res = await app.request('/qa/suggest', 'POST', { category, lastQuestion });
             if (res.code === 0 && res.data && res.data.length > 0) {
                 this.setData({ quickQuestions: res.data });
             }

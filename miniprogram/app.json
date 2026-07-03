@@ -9,7 +9,7 @@
     "pages/answer/answer"
   ],
   "window": {
-    "navigationBarTitleText": "新生入学助手",
+    "navigationBarTitleText": "冰冰快答小助手",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black"
   }

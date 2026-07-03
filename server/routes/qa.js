@@ -9,6 +9,14 @@ const embedding = require('../services/embedding');
 
 const CACHE_TTL = 3600;
 
+// 清除问答缓存
+async function clearQACache() {
+    try {
+        const keys = await redis.keys('qa:*');
+        if (keys.length > 0) await redis.del(keys);
+    } catch (e) {}
+}
+
 // ============ RAG 问答核心 ============
 router.post('/ask', async (req, res) => {
     try {
@@ -157,8 +165,8 @@ router.post('/ask', async (req, res) => {
                 const req = pool.request();
                 // 去重
                 req.input('qt', sql.NVarChar, qClean);
-                const dup = await req.query(`SELECT TOP 1 question_id FROM question
-                            WHERE question_text LIKE '%' + @qt + '%' OR @qt LIKE '%' + question_text + '%'`);
+                const dup = await req.query(`SELECT question_id FROM question
+                            WHERE question_text LIKE CONCAT('%', @qt, '%') OR CONCAT('%', @qt, '%') LIKE question_text LIMIT 1`);
                 if (dup.recordset.length === 0) {
                     // 插入问题
                     const insReq = pool.request();
@@ -172,14 +180,8 @@ router.post('/ask', async (req, res) => {
                     const idResult = await idReq.query('SELECT TOP 1 question_id FROM question WHERE question_text = @qt ORDER BY question_id DESC');
                     const questionId = idResult.recordset[0]?.question_id;
                     if (questionId) {
-                        // 创建 answer 记录（占位符，等待学生补充或管理员审核）
-                        try {
-                            const ansReq = pool.request();
-                            ansReq.input('qid', sql.Int, questionId);
-                            ansReq.input('ans', sql.NVarChar, '该问题的答案正在整理中，请稍后查看');
-                            await ansReq.query(`INSERT INTO answer (question_id, answer_text, source, review_status)
-                                        VALUES (@qid, @ans, 1, 0)`);
-                        } catch (e) { console.log('[QA] answer insert error:', e.message); }
+                        // 只记录问题，不创建 answer（等待学生提交真实回答）
+                        console.log('[QA] 未收录问题已记录 question_id:', questionId);
                     } else {
                         console.log('[QA] question_id not found after insert');
                     }
@@ -203,6 +205,7 @@ router.post('/ask', async (req, res) => {
                                 VALUES (@qt, @at, @cat, @src)`);
                 }
             } catch (e) {}
+            await clearQACache();
         }
 
         const result = {
@@ -321,15 +324,58 @@ router.post('/feedback', async (req, res) => {
 
 router.post('/suggest', async (req, res) => {
     try {
-        const { category } = req.body;
+        const { category, lastQuestion } = req.body;
         const pool = await getPool();
-        let query = 'SELECT TOP 5 question_text FROM knowledge_base WHERE is_active = 1';
-        if (category) query += ` AND category = @cat`;
-        query += ' ORDER BY hit_count DESC';
-        const request = pool.request();
-        if (category) request.input('cat', sql.NVarChar, category);
-        const result = await request.query(query);
-        res.json({ code: 0, data: result.recordset.map(r => r.question_text) });
+
+        // 分类关联关系：当前分类 → 推荐的下一个分类
+        const relatedMap = {
+            '交通': ['宿舍', '报到', '费用'],
+            '费用': ['报到', '宿舍', '奖学金'],
+            '宿舍': ['食堂', '学校', '交通'],
+            '食堂': ['宿舍', '学校', '费用'],
+            '报到': ['交通', '宿舍', '费用', '学校'],
+            '学校': ['食堂', '宿舍', '报到', '费用'],
+            '奖学金': ['费用', '学校'],
+            '其他': ['学校', '宿舍', '食堂', '报到']
+        };
+
+        // 获取关联分类的问题
+        const relatedCategories = relatedMap[category] || ['学校', '宿舍', '食堂', '报到', '交通'];
+        let suggestions = [];
+
+        // 从关联分类中取问题
+        for (const cat of relatedCategories) {
+            if (suggestions.length >= 5) break;
+            const r = await pool.request()
+                .input('cat', sql.NVarChar, cat)
+                .query(`SELECT question_text, hit_count FROM knowledge_base WHERE is_active = 1 AND category = @cat ORDER BY hit_count DESC LIMIT 2`);
+            for (const row of r.recordset) {
+                if (!suggestions.includes(row.question_text) && row.question_text !== lastQuestion) {
+                    suggestions.push(row.question_text);
+                }
+            }
+        }
+
+        // 如果推荐不足，补充当前分类的其他问题
+        if (suggestions.length < 3 && category) {
+            const r = await pool.request()
+                .input('cat', sql.NVarChar, category)
+                .query(`SELECT question_text FROM knowledge_base WHERE is_active = 1 AND category = @cat ORDER BY hit_count DESC LIMIT 5`);
+            for (const row of r.recordset) {
+                if (!suggestions.includes(row.question_text) && row.question_text !== lastQuestion) {
+                    suggestions.push(row.question_text);
+                }
+            }
+        }
+
+        // 最终兜底
+        if (suggestions.length === 0) {
+            const r = await pool.request()
+                .query(`SELECT question_text FROM knowledge_base WHERE is_active = 1 ORDER BY hit_count DESC LIMIT 5`);
+            suggestions = r.recordset.map(row => row.question_text);
+        }
+
+        res.json({ code: 0, data: suggestions.slice(0, 5) });
     } catch (err) {
         res.json({ code: 0, data: [] });
     }

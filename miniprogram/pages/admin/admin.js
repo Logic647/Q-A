@@ -158,10 +158,16 @@ Page({
     previewImage(e) { wx.previewImage({ urls: [e.currentTarget.dataset.url] }); },
 
     onSaveUserRemark(e) {
-        const uid = e.currentTarget.dataset.uid;
-        const remark = this.data.userRemarkMap[uid] || '';
-        app.request('/admin/verified/update', 'POST', { user_id: uid, remark }).then(() => {
-            wx.showToast({ title: '已保存', icon: 'success' }); this.loadVerifiedList();
+        const uid = parseInt(e.currentTarget.dataset.uid);
+        const remark = this.data.userRemarkMap[String(uid)] || '';
+        console.log('保存备注:', uid, remark);
+        app.request('/admin/verified/update', 'POST', { user_id: uid, remark }).then(res => {
+            console.log('保存结果:', res);
+            wx.showToast({ title: '已保存', icon: 'success' });
+            this.loadVerifiedList();
+        }).catch(err => {
+            console.error('保存失败:', err);
+            wx.showToast({ title: '保存失败', icon: 'none' });
         });
     },
 

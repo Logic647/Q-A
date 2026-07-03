@@ -2,6 +2,29 @@ const express = require('express');
 const router = express.Router();
 const { sql, getPool } = require('../config/db');
 const embedding = require('../services/embedding');
+const redis = require('../config/redis');
+
+// 清除问答缓存（知识库变更时调用）
+async function clearQACache(specificQuestion) {
+    try {
+        if (specificQuestion) {
+            // 精准清除：只删除包含该问题关键词的缓存
+            const clean = specificQuestion.replace(/[？?！!。，,、\s]/g, '');
+            const keys = await redis.keys('qa:*');
+            if (keys.length > 0) {
+                const toDelete = keys.filter(k => {
+                    const keyText = k.replace('qa:', '');
+                    return keyText.includes(clean) || clean.includes(keyText);
+                });
+                if (toDelete.length > 0) await redis.del(toDelete);
+            }
+        } else {
+            // 无法确定具体问题时，清除所有缓存
+            const keys = await redis.keys('qa:*');
+            if (keys.length > 0) await redis.del(keys);
+        }
+    } catch (e) {}
+}
 
 // 知识库入库后自动向量化
 async function autoVectorize(kbId, questionText, answerText, category) {
@@ -101,6 +124,7 @@ router.post('/review', async (req, res) => {
                     .query('UPDATE question SET status = 1 WHERE question_id = @qid');
             }
         }
+        await clearQACache(row?.question_text);
         res.json({ code: 0, msg: action === 1 ? '审核通过并入库' : '已拒绝' });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -124,19 +148,25 @@ router.post('/low-score/reset', async (req, res) => {
     try {
         const { question_id } = req.body;
         const pool = await getPool();
-        // 只删除低分回答（avg_score < 3），保留其他回答
+        // 先获取问题文本
+        const qResult = await pool.request()
+            .input('qid', sql.Int, question_id)
+            .query('SELECT question_text FROM question WHERE question_id = @qid');
+        const questionText = qResult.recordset[0]?.question_text;
+        // 删除低分回答
         await pool.request()
             .input('qid', sql.Int, question_id)
             .query('DELETE FROM answer WHERE question_id = @qid AND avg_score < 3.0 AND score_count >= 2');
-        // 重置问题状态为未回答
+        // 重置问题状态
         await pool.request()
             .input('qid', sql.Int, question_id)
             .query('UPDATE question SET status = 0 WHERE question_id = @qid');
-        // 从知识库中移除相关条目
+        // 从知识库中移除
         await pool.request()
             .input('qid', sql.Int, question_id)
             .query(`DELETE FROM knowledge_base WHERE question_text IN
                     (SELECT question_text FROM question WHERE question_id = @qid)`);
+        await clearQACache(questionText);
         res.json({ code: 0, msg: '已重置为待回答问题' });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -245,6 +275,7 @@ router.post('/kb/add', async (req, res) => {
         if (kbResult.recordset.length > 0) {
             await autoVectorize(kbResult.recordset[0].kb_id, question_text, answer_text, category);
         }
+        await clearQACache(question_text);
         res.json({ code: 0, msg: '添加成功' });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -263,6 +294,7 @@ router.post('/kb/update', async (req, res) => {
                     WHERE kb_id = @id`);
         // 自动重新向量化
         await autoVectorize(kb_id, question_text, answer_text, category);
+        await clearQACache(question_text);
         res.json({ code: 0, msg: '更新成功' });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -272,11 +304,17 @@ router.post('/kb/delete', async (req, res) => {
         const { kb_id } = req.body;
         if (!kb_id) return res.json({ code: -1, msg: '缺少条目ID' });
         const pool = await getPool();
+        // 先获取问题文本用于清除缓存
+        const kbResult = await pool.request()
+            .input('id', sql.Int, parseInt(kb_id))
+            .query('SELECT question_text FROM knowledge_base WHERE kb_id = @id');
+        const questionText = kbResult.recordset[0]?.question_text;
         await pool.request()
             .input('id', sql.Int, kb_id)
             .query('DELETE FROM knowledge_base WHERE kb_id = @id');
         // 从向量索引中移除（通过重新构建或标记删除）
         try { embedding.removeVector && embedding.removeVector(kb_id); } catch (e) {}
+        await clearQACache(questionText);
         res.json({ code: 0, msg: '删除成功' });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -327,6 +365,7 @@ router.post('/review/batch', async (req, res) => {
                 rejected++;
             }
         }
+        await clearQACache();
         res.json({ code: 0, msg: `批量${action === 1 ? '通过' : '拒绝'}: ${approved}条通过, ${rejected}条拒绝` });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -346,6 +385,7 @@ router.post('/kb/delete-batch', async (req, res) => {
                 .query('DELETE FROM knowledge_base WHERE kb_id = @id');
             try { embedding.removeVector && embedding.removeVector(id); } catch (e) {}
         }
+        await clearQACache();
         res.json({ code: 0, msg: `已删除 ${kb_ids.length} 条` });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -359,11 +399,12 @@ router.get('/pending-questions', async (req, res) => {
         const result = await pool.request()
             .query(`SELECT q.question_id, q.question_text, q.category, q.status, q.created_at,
                     u.nickname AS asker_name,
-                    (SELECT TOP 1 a.answer_text FROM answer a WHERE a.question_id = q.question_id) AS answer_text
+                    (SELECT a.answer_text FROM answer a WHERE a.question_id = q.question_id LIMIT 1) AS answer_text
                     FROM question q
                     LEFT JOIN user u ON q.user_id = u.user_id
                     WHERE q.status = 0
-                    ORDER BY q.created_at DESC`);
+                    ORDER BY q.created_at DESC
+                    LIMIT 50`);
         res.json({ code: 0, data: result.recordset });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });

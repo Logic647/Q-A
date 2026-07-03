@@ -1,1 +1,5 @@
-{"navigationBarTitleText": "提问记录"}
+{
+  "navigationBarTitleText": "",
+  "navigationStyle": "custom",
+  "usingComponents": {}
+}

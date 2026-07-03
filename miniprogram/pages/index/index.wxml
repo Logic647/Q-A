@@ -65,17 +65,9 @@
 
   <!-- 主内容区 -->
   <view class="main">
-    <!-- 顶栏 -->
-    <view class="header">
-      <view class="header-left" bindtap="toggleMenu">
-        <view class="menu-btn">
-          <view class="menu-line"></view>
-          <view class="menu-line"></view>
-          <view class="menu-line"></view>
-        </view>
-      </view>
-      <view class="header-title">新生助手</view>
-      <view class="header-right"></view>
+    <!-- 菜单按钮 -->
+    <view class="float-menu" bindtap="toggleMenu">
+      <text class="menu-icon-text">☰</text>
     </view>
 
     <!-- 消息列表 -->

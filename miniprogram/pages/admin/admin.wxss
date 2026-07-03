@@ -1,22 +1,24 @@
-.page { height: 100vh; display: flex; flex-direction: column; background: #fafafa; }
-.header { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 24rpx; background: #fff; border-bottom: 1rpx solid #f0f0f0; flex-shrink: 0; z-index: 10; }
+.page { height: 100vh; display: flex; flex-direction: column; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 24rpx; background: #fff; border-bottom: 1rpx solid #f0f0f0; flex-shrink: 0; }
 .header-left { padding: 12rpx; }
 .back-icon { font-size: 36rpx; color: #333; }
 .header-title { font-size: 34rpx; font-weight: 600; color: #111; }
 .header-right { width: 64rpx; }
-.tabs { display: flex; background: #fff; border-bottom: 1rpx solid #f0f0f0; flex-shrink: 0; }
-.tab { flex: 1; text-align: center; padding: 22rpx 0; font-size: 26rpx; color: #999; position: relative; }
+
+.tabs { display: flex; background: #fff; border-bottom: 1rpx solid #f0f0f0; flex-shrink: 0; overflow-x: auto; }
+.tab { flex-shrink: 0; text-align: center; padding: 22rpx 20rpx; font-size: 26rpx; color: #999; position: relative; white-space: nowrap; }
 .tab.active { color: #111; font-weight: 600; }
 .tab.active::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 4rpx; background: #333; border-radius: 2rpx; }
-.content { flex: 1; padding: 0 24rpx 24rpx; overflow-y: auto; }
 
-.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; margin-top: 20rpx; }
+.content { flex: 1; padding: 20rpx 24rpx; overflow-y: auto; }
+
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
 .stat-card { background: #fff; border-radius: 14rpx; padding: 24rpx; text-align: center; }
 .stat-card.warn { background: #fffbeb; }
-.stat-num { font-size: 48rpx; font-weight: bold; color: #111; display: block; }
+.stat-num { font-size: 48rpx; font-weight: bold; color: #111; display: block; line-height: 1.2; }
 .stat-card.warn .stat-num { color: #d97706; }
 .stat-label { font-size: 24rpx; color: #666; display: block; margin-top: 4rpx; }
-.stat-sub { font-size: 20rpx; color: #bbb; display: block; margin-top: 6rpx; }
+.stat-sub { font-size: 20rpx; color: #bbb; display: block; margin-top: 4rpx; }
 
 .quick-stats { display: flex; background: #fff; border-radius: 14rpx; padding: 24rpx; margin-top: 16rpx; }
 .qs-item { flex: 1; text-align: center; }
@@ -25,7 +27,11 @@
 
 .section-card { background: #fff; border-radius: 14rpx; padding: 24rpx; margin-top: 16rpx; }
 .section-title { display: flex; justify-content: space-between; align-items: center; font-size: 28rpx; font-weight: 600; color: #111; margin-bottom: 16rpx; }
+.section-count { font-size: 24rpx; color: #999; background: #f5f5f5; padding: 4rpx 16rpx; border-radius: 16rpx; }
+.toolbar { display: flex; gap: 12rpx; }
+.tool-btn { font-size: 22rpx; color: #555; background: #f5f5f5; padding: 6rpx 20rpx; border-radius: 6rpx; }
 .add-btn { font-size: 24rpx; color: #333; background: #f5f5f5; padding: 8rpx 24rpx; border-radius: 8rpx; font-weight: 500; }
+.add-btn:active { background: #eee; }
 .empty-tip { text-align: center; color: #ccc; padding: 40rpx; font-size: 26rpx; }
 
 .item-card { border-bottom: 1rpx solid #f5f5f5; padding: 20rpx 0; }
@@ -47,11 +53,8 @@
 .action-btn.reset { background: #fffbeb; color: #d97706; }
 
 .remark-input { border: 1rpx solid #e5e7eb; border-radius: 8rpx; padding: 12rpx 16rpx; font-size: 24rpx; margin: 8rpx 0; width: 100%; box-sizing: border-box; }
-
 .verify-img { width: 100%; max-height: 360rpx; border-radius: 10rpx; margin: 10rpx 0; display: block; }
 
-.kb-item { border-bottom: 1rpx solid #f5f5f5; padding: 18rpx 0; }
-.kb-item:last-child { border-bottom: none; }
 .kb-header { display: flex; justify-content: space-between; margin-bottom: 6rpx; }
 .kb-cat { font-size: 22rpx; color: #555; background: #f5f5f5; padding: 3rpx 10rpx; border-radius: 6rpx; }
 .kb-hit { font-size: 20rpx; color: #bbb; }
@@ -62,9 +65,6 @@
 .action-btn-sm.edit { background: #f5f5f5; color: #555; }
 .action-btn-sm.del { background: #fef2f2; color: #dc2626; }
 
-/* 批量操作 */
-.toolbar { display: flex; gap: 12rpx; }
-.tool-btn { font-size: 22rpx; color: #555; background: #f5f5f5; padding: 6rpx 20rpx; border-radius: 6rpx; }
 .batch-bar { display: flex; align-items: center; gap: 12rpx; padding: 12rpx 0; border-bottom: 1rpx solid #f0f0f0; margin-bottom: 8rpx; }
 .batch-btn { font-size: 22rpx; padding: 8rpx 20rpx; border-radius: 6rpx; background: #f5f5f5; color: #555; }
 .batch-btn.pass { background: #f0f7f0; color: #16a34a; }
@@ -89,4 +89,4 @@
 .modal-btns { display: flex; gap: 20rpx; margin-top: 24rpx; }
 .mbtn { flex: 1; height: 80rpx; line-height: 80rpx; text-align: center; border-radius: 10rpx; font-size: 28rpx; font-weight: 500; }
 .mbtn.cancel { background: #f5f5f5; color: #666; }
-.mbtn.confirm { background: #111; color: #fff; }
+.mbtn.confirm { background: #333; color: #fff; }

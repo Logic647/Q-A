@@ -87,7 +87,7 @@
         <view class="item-card" wx:for="{{verifiedList}}" wx:key="user_id">
           <view class="item-top"><text class="item-name">{{item.nickname || '用户'}}</text><text class="item-id">{{item.student_id}}</text></view>
           <text class="item-sub">姓名：{{item.real_name}} · 认证时间：{{item.verify_time}}</text>
-          <input class="remark-input" placeholder="添加/修改备注" value="{{item._remark}}" bindinput="onUserRemarkInput" data-uid="{{item.user_id}}" />
+          <input class="remark-input" placeholder="添加/修改备注" value="{{userRemarkMap[item.user_id] || ''}}" bindinput="onUserRemarkInput" data-uid="{{item.user_id}}" />
           <view class="item-actions">
             <view class="action-btn edit" bindtap="onSaveUserRemark" data-uid="{{item.user_id}}">保存备注</view>
             <view class="action-btn reject" bindtap="onRevokeUser" data-uid="{{item.user_id}}">回收权限</view>

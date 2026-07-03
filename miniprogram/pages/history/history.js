@@ -7,6 +7,8 @@ Page({
         this.loadHistory();
     },
 
+    goBack() { wx.navigateBack(); },
+
     async loadHistory() {
         const res = await app.request('/qa/history/0');
         if (res.code === 0) {

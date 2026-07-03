@@ -5,7 +5,39 @@ const LLM_API_URL = 'https://api.xiaomimimo.com/v1/chat/completions';
 const LLM_API_KEY = 'REDACTED-LLM-API-KEY';
 const LLM_MODEL = 'mimo-v2.5';
 
+// 从推理内容中提取纯回答（去掉思考过程）
+function extractAnswer(text) {
+    // 推理内容中，实际回答通常在最后几段
+    // 常见的思考前缀模式
+    const thinkPatterns = [
+        /^嗯[，,]/, /^首先[，,]/, /^用户[问想要]/, /^我需要[根据根据]/,
+        /^参考[资资料]/, /^根据[资料问题]/, /^我应该/, /^让我/,
+        /^这是一个/, /^从[问资料]/, /^关于[这用户]/
+    ];
+    
+    const lines = text.split('\n').filter(l => l.trim());
+    
+    // 找到最后一个不含思考模式的段落
+    let lastAnswerStart = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+        const isThink = thinkPatterns.some(p => p.test(lines[i].trim()));
+        if (!isThink) {
+            lastAnswerStart = i;
+            break;
+        }
+    }
+    
+    if (lastAnswerStart >= 0) {
+        return lines.slice(lastAnswerStart).join('\n').trim();
+    }
+    
+    // 找不到明确分界，返回全文
+    return text;
+}
+
 const SYSTEM_PROMPT = `你是"无锡学院新生助手"，专门帮助大学新生解答入学相关问题。
+
+【重要】直接输出最终回答，不要输出任何思考过程、分析过程、推理步骤。不要出现"用户问的是""我需要""根据资料""我应该"等思考性文字。直接给用户答案。
 
 规则：
 1. 如果【参考资料】中有相关信息，用友好自然的语气组织回答，分点列出关键信息，控制在200字以内
@@ -14,7 +46,8 @@ const SYSTEM_PROMPT = `你是"无锡学院新生助手"，专门帮助大学新�
    - 如果是一般常识性问题（天气、地理、通用知识等），可以自由回答
 3. 回答简洁实用
 4. 语气亲切友好，像学长学姐在帮忙
-5. 纯文本回复，禁止使用任何 Markdown 格式符号（不要用**、*、#、-等标记符号，用数字编号代替）`;
+5. 纯文本回复，禁止使用任何 Markdown 格式符号（不要用**、*、#、-等标记符号，用数字编号代替）
+6. 不要输出"参考资料显示""根据以上资料""我应该"等引导语，直接说答案内容`;
 
 // 单次 LLM 调用
 function callLLM(body) {
@@ -41,8 +74,14 @@ function callLLM(body) {
                     const json = JSON.parse(data);
                     if (json.choices && json.choices[0]) {
                         const msg = json.choices[0].message;
-                        // 只取 content，不用 reasoning_content（那是推理过程）
-                        resolve(msg.content || '');
+                        const content = (msg.content || '').trim();
+                        const reasoning = (msg.reasoning_content || '').trim();
+                        
+                        // 优先用 content（模型直接输出的回答）
+                        if (content) { resolve(content); }
+                        // content 为空时，从 reasoning 中提取回答
+                        else if (reasoning) { resolve(extractAnswer(reasoning)); }
+                        else { resolve(''); }
                     } else {
                         resolve('');
                     }
@@ -87,7 +126,7 @@ async function askLLM(question, context = '') {
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: userContent }
         ],
-        max_tokens: 500,
+        max_tokens: 1024,
         temperature: 0.7
     });
 

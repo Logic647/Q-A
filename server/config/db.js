@@ -35,14 +35,28 @@ function createRequest() {
         },
         query: async (sql) => {
             const pool = getMysqlPool();
-            // 将 @param 替换为 ? 并收集参数值
+            // 将 SQL Server TOP N 语法转换为 MySQL LIMIT N
+            let processed = sql;
+            const topMatch = processed.match(/SELECT TOP (\d+)/i);
+            if (topMatch) {
+                const limit = topMatch[1];
+                processed = processed.replace(/SELECT TOP \d+/i, 'SELECT');
+                // 在 ORDER BY 子句后添加 LIMIT
+                if (processed.toUpperCase().includes('ORDER BY')) {
+                    processed = processed.replace(/(ORDER BY[^;]*?)(;|$)/i, `$1 LIMIT ${limit}$2`);
+                } else {
+                    // 没有 ORDER BY，在末尾添加 LIMIT
+                    processed = processed.replace(/;?\s*$/, ` LIMIT ${limit}`);
+                }
+            }
+            // 将 @param 替换为 ?
             const values = [];
-            const processed = sql.replace(/@(\w+)/g, (match, name) => {
+            const finalSql = processed.replace(/@(\w+)/g, (match, name) => {
                 values.push(paramMap[name] !== undefined ? paramMap[name] : null);
                 return '?';
             });
             try {
-                const [rows] = await pool.execute(processed, values);
+                const [rows] = await pool.execute(finalSql, values);
                 return { recordset: rows || [] };
             } catch (err) {
                 throw err;
