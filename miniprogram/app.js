@@ -1,6 +1,6 @@
 App({
     globalData: {
-        baseUrl: 'http://127.0.0.1:3000/api',
+        baseUrl: 'http://121.199.68.192/api',
         userInfo: null,
         isLoggedIn: false
     },

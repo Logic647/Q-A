@@ -1,30 +1,52 @@
-const msnodesqlv8 = require('msnodesqlv8');
-const connStr = 'Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=FreshmanQA;Trusted_Connection=Yes;';
+const mysql = require('mysql2/promise');
 
-function rawQuery(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        msnodesqlv8.query(connStr, sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve({ recordset: rows || [] });
-        });
-    });
+// 数据库配置 - 根据环境变量选择 MySQL 或 SQL Server
+const DB_TYPE = process.env.DB_TYPE || 'mysql';
+
+const mysqlConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || 'REDACTED-DB-PASSWORD',
+    database: process.env.DB_NAME || 'FreshmanQA',
+    charset: 'utf8mb4',
+    waitForConnections: true,
+    connectionLimit: 10
+};
+
+let mysqlPool = null;
+
+function getMysqlPool() {
+    if (!mysqlPool) {
+        mysqlPool = mysql.createPool(mysqlConfig);
+    }
+    return mysqlPool;
 }
 
+// 模拟 SQL Server 的 request 接口，让现有代码无需修改
 function createRequest() {
     const paramMap = {};
+    const paramTypes = {};
     const req = {
         input: (name, type, value) => {
-            paramMap[name.toLowerCase()] = value;
+            paramMap[name] = value;
+            paramTypes[name] = type;
             return req;
         },
-        query: (sql) => {
+        query: async (sql) => {
+            const pool = getMysqlPool();
+            // 将 @param 替换为 ? 并收集参数值
+            const values = [];
             const processed = sql.replace(/@(\w+)/g, (match, name) => {
-                const val = paramMap[name.toLowerCase()];
-                if (val === undefined || val === null) return 'NULL';
-                if (typeof val === 'number') return val.toString();
-                return `N'${val.toString().replace(/'/g, "''")}'`;
+                values.push(paramMap[name] !== undefined ? paramMap[name] : null);
+                return '?';
             });
-            return rawQuery(processed);
+            try {
+                const [rows] = await pool.execute(processed, values);
+                return { recordset: rows || [] };
+            } catch (err) {
+                throw err;
+            }
         }
     };
     return req;
@@ -34,4 +56,4 @@ async function getPool() {
     return { request: createRequest };
 }
 
-module.exports = { sql: { NVarChar: 'nvarchar', Int: 'int', TinyInt: 'tinyint' }, getPool };
+module.exports = { sql: { NVarChar: 'string', Int: 'int', TinyInt: 'tinyint' }, getPool };

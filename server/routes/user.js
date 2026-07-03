@@ -22,16 +22,16 @@ router.post('/login', async (req, res) => {
 
         let result = await pool.request()
             .input('openid', sql.NVarChar, userOpenid)
-            .query('SELECT * FROM [user] WHERE openid = @openid');
+            .query('SELECT * FROM user WHERE openid = @openid');
 
         if (result.recordset.length === 0) {
             await pool.request()
                 .input('openid', sql.NVarChar, userOpenid)
                 .input('nickname', sql.NVarChar, nickname || '微信用户')
-                .query('INSERT INTO [user] (openid, nickname) VALUES (@openid, @nickname)');
+                .query('INSERT INTO user (openid, nickname) VALUES (@openid, @nickname)');
             result = await pool.request()
                 .input('openid', sql.NVarChar, userOpenid)
-                .query('SELECT * FROM [user] WHERE openid = @openid');
+                .query('SELECT * FROM user WHERE openid = @openid');
         }
         res.json({ code: 0, data: result.recordset[0] });
     } catch (err) {
@@ -57,7 +57,7 @@ router.post('/verify', async (req, res) => {
         // 检查是否已认证
         const user = await pool.request()
             .input('uid', sql.Int, user_id)
-            .query('SELECT auth_status FROM [user] WHERE user_id = @uid');
+            .query('SELECT auth_status FROM user WHERE user_id = @uid');
         if (user.recordset.length > 0 && user.recordset[0].auth_status === 1) {
             return res.json({ code: -1, msg: '您已完成认证' });
         }
@@ -86,7 +86,7 @@ router.get('/verify-status/:uid', async (req, res) => {
                     FROM user_verify WHERE user_id = @uid ORDER BY created_at DESC`);
         const user = await pool.request()
             .input('uid', sql.Int, parseInt(req.params.uid))
-            .query('SELECT auth_status, role FROM [user] WHERE user_id = @uid');
+            .query('SELECT auth_status, role FROM user WHERE user_id = @uid');
         res.json({
             code: 0,
             data: {
@@ -106,7 +106,7 @@ router.get('/info/:id', async (req, res) => {
         const pool = await getPool();
         const result = await pool.request()
             .input('uid', sql.Int, req.params.id)
-            .query('SELECT * FROM [user] WHERE user_id = @uid');
+            .query('SELECT * FROM user WHERE user_id = @uid');
         if (result.recordset.length === 0) return res.json({ code: -1, msg: '用户不存在' });
         res.json({ code: 0, data: result.recordset[0] });
     } catch (err) {

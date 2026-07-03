@@ -260,7 +260,7 @@ router.get('/pending', async (req, res) => {
             .query(`SELECT q.question_id, q.question_text, q.category, q.created_at,
                     u.nickname AS asker_name
                     FROM question q
-                    LEFT JOIN [user] u ON q.user_id = u.user_id
+                    LEFT JOIN user u ON q.user_id = u.user_id
                     WHERE q.status = 0
                     ORDER BY q.created_at DESC`);
         res.json({ code: 0, data: result.recordset });

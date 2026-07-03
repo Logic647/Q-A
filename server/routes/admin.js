@@ -44,7 +44,7 @@ router.get('/review/pending', async (req, res) => {
                     u.nickname AS responder_name
                     FROM answer a
                     INNER JOIN question q ON a.question_id = q.question_id
-                    LEFT JOIN [user] u ON a.responder_id = u.user_id
+                    LEFT JOIN user u ON a.responder_id = u.user_id
                     WHERE a.review_status = 0
                     ORDER BY a.created_at ASC`);
         res.json({ code: 0, data: result.recordset });
@@ -148,7 +148,7 @@ router.get('/verify/pending', async (req, res) => {
         const result = await pool.request()
             .query(`SELECT v.verify_id, v.user_id, v.real_name, v.student_id, v.image_url, v.created_at,
                     u.nickname FROM user_verify v
-                    LEFT JOIN [user] u ON v.user_id = u.user_id
+                    LEFT JOIN user u ON v.user_id = u.user_id
                     WHERE v.status = 0 ORDER BY v.created_at ASC`);
         res.json({ code: 0, data: result.recordset });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
@@ -162,11 +162,11 @@ router.post('/verify/review', async (req, res) => {
             .input('vid', sql.Int, verify_id)
             .input('act', sql.TinyInt, action)
             .input('rmt', sql.NVarChar, remark || '')
-            .query('UPDATE user_verify SET status = @act, remark = @rmt, reviewed_at = GETDATE() WHERE verify_id = @vid');
+            .query('UPDATE user_verify SET status = @act, remark = @rmt, reviewed_at = NOW() WHERE verify_id = @vid');
         if (action === 1) {
             await pool.request()
                 .input('uid', sql.Int, user_id)
-                .query('UPDATE [user] SET role = 1, auth_status = 1, updated_at = GETDATE() WHERE user_id = @uid');
+                .query('UPDATE user SET role = 1, auth_status = 1, updated_at = NOW() WHERE user_id = @uid');
         }
         res.json({ code: 0, msg: action === 1 ? '认证通过' : '已拒绝' });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
@@ -179,7 +179,7 @@ router.get('/verified/list', async (req, res) => {
         const result = await pool.request()
             .query(`SELECT u.user_id, u.nickname, u.real_name, u.student_id, u.role, u.auth_status,
                     v.remark, v.created_at AS verify_time
-                    FROM [user] u
+                    FROM user u
                     LEFT JOIN user_verify v ON u.user_id = v.user_id AND v.status = 1
                     WHERE u.auth_status = 1
                     ORDER BY v.created_at DESC`);
@@ -206,7 +206,7 @@ router.post('/verified/revoke', async (req, res) => {
         // 回收权限：重置 auth_status 和 role
         await pool.request()
             .input('uid', sql.Int, user_id)
-            .query('UPDATE [user] SET auth_status = 0, role = 0, updated_at = GETDATE() WHERE user_id = @uid');
+                .query('UPDATE user SET auth_status = 0, role = 0, updated_at = NOW() WHERE user_id = @uid');
         // 标记认证记录为已撤销
         await pool.request()
             .input('uid', sql.Int, user_id)
@@ -361,7 +361,7 @@ router.get('/pending-questions', async (req, res) => {
                     u.nickname AS asker_name,
                     (SELECT TOP 1 a.answer_text FROM answer a WHERE a.question_id = q.question_id) AS answer_text
                     FROM question q
-                    LEFT JOIN [user] u ON q.user_id = u.user_id
+                    LEFT JOIN user u ON q.user_id = u.user_id
                     WHERE q.status = 0
                     ORDER BY q.created_at DESC`);
         res.json({ code: 0, data: result.recordset });
