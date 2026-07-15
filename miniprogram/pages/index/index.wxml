@@ -1,112 +1,89 @@
-<view class="page">
-  <!-- 侧边栏遮罩 -->
-  <view class="menu-mask {{showMenu ? 'show' : ''}}" bindtap="closeMenu"></view>
+<view style="height:100vh;display:flex;flex-direction:column;background:#f5f5f5;">
+  <!-- 遮罩 -->
+  <view style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:90;{{showMenu?'opacity:1;pointer-events:auto;':'opacity:0;pointer-events:none;'}}" bindtap="closeMenu"></view>
 
   <!-- 侧边栏 -->
-  <view class="sidebar {{showMenu ? 'show' : ''}}">
-    <view class="sidebar-header">
-      <view class="sidebar-avatar">{{userInfo.nickname[0] || '我'}}</view>
-      <view class="sidebar-user">
-        <text class="sidebar-name">{{userInfo.nickname}}</text>
-        <text class="sidebar-id">ID: {{userInfo.user_id}}</text>
+  <view style="position:fixed;top:0;left:0;width:520rpx;height:100vh;background:#fff;z-index:100;display:flex;flex-direction:column;box-shadow:4rpx 0 24rpx rgba(0,0,0,0.08);transition:left 0.3s;{{showMenu?'left:0;':'left:-520rpx;'}}">
+    <view style="display:flex;align-items:center;padding:120rpx 32rpx 40rpx;background:#fafafa;border-bottom:1rpx solid #f0f0f0;">
+      <view style="width:80rpx;height:80rpx;border-radius:50%;background:#333;display:flex;align-items:center;justify-content:center;font-size:36rpx;color:#fff;font-weight:bold;margin-right:20rpx;">{{userInfo.nickname[0] || '我'}}</view>
+      <view style="display:flex;flex-direction:column;">
+        <text style="font-size:32rpx;color:#111;font-weight:600;">{{userInfo.nickname}}</text>
+        <text style="font-size:22rpx;color:#999;margin-top:4rpx;">ID: {{userInfo.user_id}}</text>
       </view>
     </view>
-    <view class="sidebar-actions">
-      <view class="sidebar-btn new-chat" bindtap="startNewConversation">
-        <text class="btn-icon">+</text><text>新建对话</text>
-      </view>
+    <view style="padding:24rpx 24rpx 0;">
+      <view style="display:flex;align-items:center;justify-content:center;height:80rpx;border-radius:12rpx;font-size:28rpx;background:#f5f5f5;color:#333;border:1rpx solid #e5e7eb;" bindtap="startNewConversation">+ 新建对话</view>
     </view>
-    <view class="sidebar-section">
-      <view class="section-title">历史记录</view>
-      <scroll-view class="history-list" scroll-y>
-        <view class="history-item" wx:for="{{conversations}}" wx:key="id"
-              bindtap="switchConversation" data-id="{{item.id}}">
-          <view class="history-content">
-            <text class="history-title">{{item.title}}</text>
-            <text class="history-time">{{item.updatedAt}}</text>
+    <view style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:20rpx 0;">
+      <text style="font-size:22rpx;color:#999;padding:0 32rpx 12rpx;">历史记录</text>
+      <scroll-view style="flex:1;padding:0 24rpx;" scroll-y>
+        <view style="display:flex;align-items:center;justify-content:space-between;padding:20rpx 16rpx;border-radius:10rpx;margin-bottom:4rpx;" wx:for="{{conversations}}" wx:key="id" bindtap="switchConversation" data-id="{{item.id}}">
+          <view style="flex:1;overflow:hidden;">
+            <text style="font-size:28rpx;color:#333;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{item.title}}</text>
+            <text style="font-size:22rpx;color:#bbb;margin-top:4rpx;display:block;">{{item.updatedAt}}</text>
           </view>
-          <view class="history-del" catchtap="deleteConversation" data-id="{{item.id}}">×</view>
+          <view style="width:48rpx;height:48rpx;display:flex;align-items:center;justify-content:center;font-size:32rpx;color:#ccc;" catchtap="deleteConversation" data-id="{{item.id}}">x</view>
         </view>
-        <view class="history-empty" wx:if="{{conversations.length === 0}}">暂无对话记录</view>
+        <view style="text-align:center;color:#ccc;font-size:26rpx;padding:60rpx 0;" wx:if="{{conversations.length === 0}}">暂无对话记录</view>
       </scroll-view>
     </view>
-    <view class="sidebar-footer">
-      <view class="sidebar-menu-item" bindtap="goToAnswer">
-        <text class="menu-icon">✏️</text><text>回答问题</text>
-      </view>
-      <view class="sidebar-menu-item" bindtap="goToVerify">
-        <text class="menu-icon">🪪</text><text>身份认证</text>
-      </view>
-      <view class="sidebar-menu-item" bindtap="goToAdmin">
-        <text class="menu-icon">⚙️</text><text>管理后台</text>
-      </view>
-      <view class="sidebar-menu-item" bindtap="clearAllHistory">
-        <text class="menu-icon">🗑️</text><text>清空历史</text>
-      </view>
-      <view class="sidebar-menu-item logout" bindtap="onLogout">
-        <text class="menu-icon">🚪</text><text>退出登录</text>
-      </view>
+    <view style="border-top:1rpx solid #f0f0f0;padding:16rpx 24rpx 40rpx;">
+      <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#555;" bindtap="goToAnswer"><text style="margin-right:16rpx;font-size:30rpx;">✏️</text>回答问题</view>
+      <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#555;" bindtap="goToVerify"><text style="margin-right:16rpx;font-size:30rpx;">🪪</text>身份认证</view>
+      <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#555;" bindtap="goToAdmin"><text style="margin-right:16rpx;font-size:30rpx;">⚙️</text>管理后台</view>
+      <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#555;" bindtap="clearAllHistory"><text style="margin-right:16rpx;font-size:30rpx;">🗑️</text>清空历史</view>
+      <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#ef4444;" bindtap="onLogout"><text style="margin-right:16rpx;font-size:30rpx;">🚪</text>退出登录</view>
     </view>
-  </view>
-
-  <!-- 地图浮层面板 -->
-  <view class="map-mask {{showMap ? 'show' : ''}}" bindtap="closeMap"></view>
-  <view class="map-panel {{showMap ? 'show' : ''}}">
-    <view class="map-drag"><view class="map-drag-bar"></view></view>
-    <view class="map-header">
-      <text class="map-title">校园地图</text>
-      <view class="map-close" bindtap="closeMap"><text>×</text></view>
-    </view>
-    <scroll-view class="map-scroll" scroll-x scroll-y enhanced show-scrollbar="{{false}}">
-      <image class="map-img" src="{{mapUrl}}" mode="widthFix" show-menu-by-longpress />
-    </scroll-view>
-    <view class="map-tip"><text class="tip-text">双指缩放查看详情 · 长按可保存图片</text></view>
   </view>
 
   <!-- 主内容区 -->
-  <view class="main">
+  <view style="flex:1;display:flex;flex-direction:column;height:100vh;position:relative;">
     <!-- 菜单按钮 -->
-    <view class="float-menu" bindtap="toggleMenu">
-      <text class="menu-icon-text">☰</text>
+    <view style="position:fixed;top:120rpx;left:24rpx;z-index:50;width:72rpx;height:72rpx;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.95);border-radius:50%;box-shadow:0 2rpx 12rpx rgba(0,0,0,0.08);" bindtap="toggleMenu">
+      <text style="font-size:32rpx;color:#333;">☰</text>
     </view>
 
     <!-- 消息列表 -->
-    <scroll-view class="msg-list" scroll-y scroll-into-view="{{scrollToId}}" enhanced show-scrollbar="{{false}}">
+    <scroll-view style="flex:1;padding:20rpx;background:#f5f5f5;" scroll-y scroll-into-view="{{scrollToId}}" enhanced show-scrollbar="{{false}}">
       <!-- 欢迎语 -->
-      <view class="welcome-msg" wx:if="{{messages.length === 0 && !loading}}">
-        <view class="msg-avatar bot">助</view>
-        <view class="msg-content">
-          <view class="msg-bubble bot"><text user-select>{{welcomeText}}</text></view>
+      <view style="display:flex;margin-bottom:28rpx;align-items:flex-start;" wx:if="{{messages.length === 0 && !loading}}">
+        <view style="width:64rpx;height:64rpx;border-radius:50%;background:#333;display:flex;align-items:center;justify-content:center;font-size:24rpx;font-weight:bold;color:#fff;flex-shrink:0;margin:0 12rpx;">助</view>
+        <view style="max-width:70%;">
+          <view style="padding:20rpx 24rpx;border-radius:16rpx;border-top-left-radius:4rpx;font-size:28rpx;line-height:1.7;background:#fff;color:#333;display:inline-block;box-shadow:0 1rpx 6rpx rgba(0,0,0,0.04);">
+            <text user-select>{{welcomeText}}</text>
+          </view>
         </view>
       </view>
 
       <!-- 消息 -->
-      <view class="msg-row {{item.role}}" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
-        <view class="msg-avatar {{item.role === 'bot' ? 'bot' : 'user'}}">
-          {{item.role === 'bot' ? '助' : '我'}}
+      <view style="display:flex;margin-bottom:28rpx;align-items:flex-start;{{item.role==='user'?'flex-direction:row-reverse;':''}}" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
+        <view style="width:64rpx;height:64rpx;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24rpx;font-weight:bold;color:#fff;flex-shrink:0;margin:0 12rpx;{{item.role==='bot'?'background:#333;':'background:#e5e7eb;color:#333;'}}">
+          {{item.role === 'bot' ? 'AI' : '我'}}
         </view>
-        <view class="msg-content">
-          <view class="msg-bubble {{item.role === 'bot' ? 'bot' : 'user'}}">
+        <view style="max-width:70%;{{item.role==='user'?'text-align:right;':''}}">
+          <view style="padding:20rpx 24rpx;border-radius:16rpx;font-size:28rpx;line-height:1.7;word-break:break-word;white-space:pre-wrap;display:inline-block;max-width:100%;{{item.role==='bot'?'background:#fff;color:#333;border-top-left-radius:4rpx;box-shadow:0 1rpx 6rpx rgba(0,0,0,0.04);':'background:#333;color:#fff;border-top-right-radius:4rpx;'}}">
             <text user-select>{{item.text}}</text>
           </view>
-          <text class="msg-time {{item.role}}">{{item.time}}</text>
-          <!-- 评分条：仅在机器人回答后且未评分时显示 -->
-          <view class="feedback-bar" wx:if="{{item.role === 'bot' && !item.rated && item.text.length > 5}}">
-            <text class="feedback-label">有帮助吗？</text>
-            <view class="feedback-btns">
-              <view class="fbtn good {{item.score === 1 ? 'active' : ''}}" catchtap="onFeedback" data-idx="{{index}}" data-score="1">👍</view>
-              <view class="fbtn bad {{item.score === -1 ? 'active' : ''}}" catchtap="onFeedback" data-idx="{{index}}" data-score="-1">👎</view>
+          <text style="font-size:20rpx;color:#bbb;margin-top:6rpx;padding:0 8rpx;display:block;{{item.role==='user'?'text-align:right;':''}}">{{item.time}}</text>
+          <!-- 评分 -->
+          <view style="display:flex;align-items:center;gap:12rpx;margin-top:8rpx;padding:0 8rpx;" wx:if="{{item.role === 'bot' && !item.rated && item.text.length > 5}}">
+            <text style="font-size:22rpx;color:#bbb;">有帮助吗？</text>
+            <view style="display:flex;gap:8rpx;">
+              <view style="width:48rpx;height:48rpx;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:28rpx;background:#f0f0f0;" catchtap="onFeedback" data-idx="{{index}}" data-score="1">👍</view>
+              <view style="width:48rpx;height:48rpx;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:28rpx;background:#f0f0f0;" catchtap="onFeedback" data-idx="{{index}}" data-score="-1">👎</view>
             </view>
           </view>
         </view>
       </view>
 
-      <!-- 加载 -->
-      <view class="msg-row bot" wx:if="{{loading}}" id="msg-loading">
-        <view class="msg-avatar bot">助</view>
-        <view class="msg-content">
-          <view class="msg-bubble bot loading-bubble">
-            <view class="dot"></view><view class="dot"></view><view class="dot"></view>
+      <!-- 加载动画 -->
+      <view style="display:flex;margin-bottom:28rpx;align-items:flex-start;" wx:if="{{loading}}" id="msg-loading">
+        <view style="width:64rpx;height:64rpx;border-radius:50%;background:#333;display:flex;align-items:center;justify-content:center;font-size:24rpx;font-weight:bold;color:#fff;flex-shrink:0;margin:0 12rpx;">助</view>
+        <view style="max-width:70%;">
+          <view style="padding:24rpx 32rpx;border-radius:16rpx;border-top-left-radius:4rpx;background:#fff;display:inline-flex;align-items:center;gap:10rpx;">
+            <view style="width:12rpx;height:12rpx;border-radius:50%;background:#ccc;"></view>
+            <view style="width:12rpx;height:12rpx;border-radius:50%;background:#ccc;"></view>
+            <view style="width:12rpx;height:12rpx;border-radius:50%;background:#ccc;"></view>
           </view>
         </view>
       </view>
@@ -115,21 +92,21 @@
     </scroll-view>
 
     <!-- 快捷提问 -->
-    <view class="quick-bar">
-      <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="quick-scroll">
-        <view class="quick-chip" wx:for="{{quickQuestions}}" wx:key="*this" bindtap="onQuickAsk" data-text="{{item}}">
+    <view style="padding:16rpx 0 8rpx;background:#fff;border-top:1rpx solid #f0f0f0;flex-shrink:0;">
+      <scroll-view scroll-x enhanced show-scrollbar="{{false}}" style="white-space:nowrap;padding:0 16rpx;">
+        <view style="display:inline-block;padding:14rpx 28rpx;margin:0 8rpx;background:#fff;color:#555;border-radius:32rpx;font-size:26rpx;border:1rpx solid #e5e7eb;" wx:for="{{quickQuestions}}" wx:key="*this" bindtap="onQuickAsk" data-text="{{item}}">
           {{item}}
         </view>
       </scroll-view>
     </view>
 
     <!-- 输入栏 -->
-    <view class="input-bar">
-      <view class="input-left" bindtap="openMap">
-        <text class="map-icon">📍</text>
+    <view style="display:flex;align-items:center;padding:16rpx 20rpx;padding-bottom:calc(16rpx + env(safe-area-inset-bottom));background:#fff;border-top:1rpx solid #f0f0f0;flex-shrink:0;">
+      <view style="padding:12rpx 16rpx 12rpx 4rpx;display:flex;align-items:center;" bindtap="openMap">
+        <text style="font-size:36rpx;color:#666;">📍</text>
       </view>
-      <input class="input-field" placeholder="输入你的问题..." bindinput="onInput" value="{{inputValue}}" bindconfirm="onSend" confirm-type="send" />
-      <view class="send-btn {{inputValue ? 'active' : ''}}" bindtap="onSend"><text>发送</text></view>
+      <input style="flex:1;background:#f5f5f5;border-radius:36rpx;padding:18rpx 24rpx;font-size:28rpx;" placeholder="输入你的问题..." bindinput="onInput" value="{{inputValue}}" bindconfirm="onSend" confirm-type="send" />
+      <view style="margin-left:16rpx;padding:18rpx 36rpx;border-radius:36rpx;font-size:28rpx;font-weight:500;{{inputValue?'background:#333;color:#fff;':'color:#ccc;background:#f0f0f0;'}}" bindtap="onSend">发送</view>
     </view>
   </view>
 </view>

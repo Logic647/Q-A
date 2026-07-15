@@ -9,8 +9,6 @@ Page({
         scrollToId: '',
         userInfo: null,
         showMenu: false,
-        showMap: false,
-        mapUrl: '',
         conversations: [],
         currentConversationId: '',
         welcomeText: '你好！我是新生入学助手，有什么问题都可以问我～\n\n你可以直接输入问题，也可以点击下方的快捷提问：',
@@ -27,19 +25,14 @@ Page({
             wx.redirectTo({ url: '/pages/login/login' });
             return;
         }
-        this.setData({
-            userInfo,
-            mapUrl: app.globalData.baseUrl.replace('/api', '') + '/public/campus_map.jpg'
-        });
+        this.setData({ userInfo });
         this.loadConversations();
-        // 首次进入创建空会话
         if (!this.data.currentConversationId) {
             this._createNewConv();
         }
     },
 
     onShow() {
-        // 从其他页面返回时，恢复当前会话的消息
         if (this.data.currentConversationId) {
             const conv = this._findConv(this.data.currentConversationId);
             if (conv) {
@@ -48,7 +41,6 @@ Page({
         }
     },
 
-    // ========== 会话管理 ==========
     loadConversations() {
         const list = wx.getStorageSync('conversations') || [];
         this.setData({ conversations: list });
@@ -85,6 +77,7 @@ Page({
 
     startNewConversation() {
         this._createNewConv();
+        this.setData({ showMenu: false });
     },
 
     switchConversation(e) {
@@ -126,7 +119,7 @@ Page({
     clearAllHistory() {
         wx.showModal({
             title: '清空历史',
-            content: '确定清空所有对话记录吗？此操作不可恢复。',
+            content: '确定清空所有对话记录吗？',
             success: (res) => {
                 if (!res.confirm) return;
                 this.data.conversations = [];
@@ -136,15 +129,16 @@ Page({
         });
     },
 
-    // ========== 菜单 ==========
     toggleMenu() { this.setData({ showMenu: !this.data.showMenu }); },
     closeMenu() { this.setData({ showMenu: false }); },
+    openMap() {
+        const mapUrl = app.globalData.baseUrl.replace('/api', '') + '/public/campus_map.jpg';
+        wx.previewImage({
+            urls: [mapUrl],
+            current: mapUrl
+        });
+    },
 
-    // ========== 地图面板 ==========
-    openMap() { this.setData({ showMap: true }); },
-    closeMap() { this.setData({ showMap: false }); },
-
-    // ========== 聊天 ==========
     onInput(e) { this.setData({ inputValue: e.detail.value }); },
 
     onSend() {
@@ -166,7 +160,6 @@ Page({
         const now = this._fmtTime();
         const userMsg = { id: ++msgId, role: 'user', text, time: now };
 
-        // 直接操作数组后统一 setData
         this.data.messages.push(userMsg);
         this.setData({
             messages: this.data.messages,
@@ -202,7 +195,6 @@ Page({
             });
         }
 
-        // 同步到会话存储
         if (conv) {
             conv.messages = this.data.messages.slice();
             conv.updatedAt = this._fmtDate(new Date());
@@ -225,11 +217,9 @@ Page({
         } catch (e) { }
     },
 
-    // ========== 导航 ==========
     goToAdmin() { this.setData({ showMenu: false }); wx.navigateTo({ url: '/pages/admin/admin' }); },
     async goToAnswer() {
         this.setData({ showMenu: false });
-        // 先刷新用户认证状态
         try {
             const uid = app.globalData.userInfo ? app.globalData.userInfo.user_id : 0;
             if (uid) {
@@ -254,7 +244,6 @@ Page({
     },
     goToVerify() { this.setData({ showMenu: false }); wx.navigateTo({ url: '/pages/verify/verify' }); },
 
-    // ========== 评分 ==========
     onFeedback(e) {
         const { idx, score } = e.currentTarget.dataset;
         const msg = this.data.messages[idx];
@@ -263,7 +252,6 @@ Page({
         this.data.messages[idx].score = score;
         this.setData({ messages: this.data.messages });
         const userId = app.globalData.userInfo ? app.globalData.userInfo.user_id : 0;
-        // 使用 question_id 作为 answer_id 的近似标识（后端可按 question_id 关联）
         app.request('/qa/feedback', 'POST', {
             answer_id: msg.questionId || msg.id, user_id: userId,
             score: score === 1 ? 5 : 2, comment: ''

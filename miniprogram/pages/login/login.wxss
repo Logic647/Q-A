@@ -5,7 +5,6 @@
   min-height: 100vh;
   background: #f5f5f5;
   padding: 0 48rpx;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
 }
 
 .logo-area {
@@ -28,7 +27,6 @@
   font-weight: bold;
   color: #fff;
   margin-bottom: 32rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
 }
 
 .title {
@@ -43,7 +41,9 @@
   color: #999;
 }
 
-.form-area { width: 100%; }
+.form-area {
+  width: 100%;
+}
 
 .login-box {
   display: flex;
@@ -52,7 +52,6 @@
   background: #fff;
   border-radius: 16rpx;
   padding: 60rpx 40rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
 }
 
 .btn-wx {
@@ -65,27 +64,12 @@
   font-weight: 500;
   border-radius: 12rpx;
   border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
 }
 
-.wx-icon { font-size: 36rpx; }
-
-.loading-spinner {
-  width: 48rpx;
-  height: 48rpx;
-  border: 4rpx solid #e5e7eb;
-  border-top-color: #333;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 20rpx;
+.loading-text {
+  font-size: 28rpx;
+  color: #666;
 }
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.loading-text { font-size: 28rpx; color: #666; }
 
 .error-text {
   font-size: 28rpx;
@@ -105,5 +89,11 @@
   border: none;
 }
 
-.footer { margin-top: 100rpx; }
-.tip { font-size: 22rpx; color: #ccc; }
+.footer {
+  margin-top: 100rpx;
+}
+
+.tip {
+  font-size: 22rpx;
+  color: #ccc;
+}

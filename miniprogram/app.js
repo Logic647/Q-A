@@ -1,6 +1,6 @@
 App({
     globalData: {
-        baseUrl: 'http://121.199.68.192/api',
+        baseUrl: 'https://logic-yjb.top/api',
         userInfo: null,
         isLoggedIn: false
     },
@@ -16,11 +16,15 @@ App({
 
     request(url, method = 'GET', data = {}) {
         return new Promise((resolve, reject) => {
+            const header = { 'content-type': 'application/json' };
+            if (url.startsWith('/admin')) {
+                header['X-Admin-Key'] = 'REDACTED-ADMIN-KEY';
+            }
             wx.request({
                 url: this.globalData.baseUrl + url,
                 method,
                 data,
-                header: { 'content-type': 'application/json' },
+                header,
                 timeout: 60000,
                 success: res => resolve(res.data),
                 fail: err => reject(err)

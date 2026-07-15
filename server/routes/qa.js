@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { sql, getPool } = require('../config/db');
 const { askLLM } = require('../services/llm');
-const { extractKeywordsRule } = require('../services/llm');
 const redis = require('../config/redis');
 const { retrieveKnowledge } = require('../services/kg');
 const embedding = require('../services/embedding');
@@ -12,7 +11,13 @@ const CACHE_TTL = 3600;
 // 清除问答缓存
 async function clearQACache() {
     try {
-        const keys = await redis.keys('qa:*');
+        const keys = [];
+        let cursor = '0';
+        do {
+            const [newCursor, batch] = await redis.scan(cursor, 'MATCH', 'qa:*', 'COUNT', 100);
+            cursor = newCursor;
+            keys.push(...batch);
+        } while (cursor !== '0');
         if (keys.length > 0) await redis.del(keys);
     } catch (e) {}
 }
@@ -126,7 +131,7 @@ router.post('/ask', async (req, res) => {
                             FROM question q
                             INNER JOIN answer a ON q.question_id = a.question_id
                             WHERE q.status = 1 AND a.review_status = 1
-                            AND (q.question_text = @q OR q.question_text LIKE @q + '%' OR @q LIKE '%' + q.question_text + '%')
+                            AND (q.question_text = @q OR q.question_text LIKE CONCAT(@q, '%') OR @q LIKE CONCAT('%', q.question_text, '%'))
                             ORDER BY q.created_at DESC`);
                 if (r.recordset.length > 0) {
                     const row = r.recordset[0];
@@ -192,9 +197,9 @@ router.post('/ask', async (req, res) => {
             try {
                 const pool = await getPool();
                 const dup = await pool.request()
-                    .input('qt', sql.NVarChar, qClean)
+                    .input('qt', sql.NVarChar, `%${qClean}%`)
                     .query(`SELECT TOP 1 kb_id FROM knowledge_base
-                            WHERE is_active = 1 AND question_text LIKE @q`, { q: `%${qClean}%` });
+                            WHERE is_active = 1 AND question_text LIKE @qt`);
                 if (dup.recordset.length === 0) {
                     await pool.request()
                         .input('qt', sql.NVarChar, question_text)
@@ -249,7 +254,7 @@ router.get('/history/:user_id', async (req, res) => {
             .query(`SELECT q.question_id, q.question_text, q.category, q.status, q.created_at,
                     a.answer_text, a.avg_score, a.score_count
                     FROM question q LEFT JOIN answer a ON q.question_id = a.question_id
-                    WHERE q.user_id = @uid ORDER BY q.created_at DESC`);
+                    WHERE q.user_id = @uid ORDER BY q.created_at DESC LIMIT 100`);
         res.json({ code: 0, data: result.recordset });
     } catch (err) {
         res.status(500).json({ code: -1, msg: err.message });
@@ -265,7 +270,7 @@ router.get('/pending', async (req, res) => {
                     FROM question q
                     LEFT JOIN user u ON q.user_id = u.user_id
                     WHERE q.status = 0
-                    ORDER BY q.created_at DESC`);
+                    ORDER BY q.created_at DESC LIMIT 50`);
         res.json({ code: 0, data: result.recordset });
     } catch (err) {
         res.status(500).json({ code: -1, msg: err.message });

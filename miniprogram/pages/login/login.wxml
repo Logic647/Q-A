@@ -1,30 +1,26 @@
-<view class="container">
-  <view class="logo-area">
-    <view class="logo">冰</view>
-    <view class="title">冰冰快答小助手</view>
-    <view class="subtitle">智能问答 · 知识图谱</view>
+<view style="display:flex;flex-direction:column;align-items:center;min-height:100vh;background:#f5f5f5;padding:0 48rpx;">
+  <view style="display:flex;flex-direction:column;align-items:center;margin-top:180rpx;margin-bottom:100rpx;">
+    <view style="width:140rpx;height:140rpx;border-radius:32rpx;background:#333;display:flex;align-items:center;justify-content:center;font-size:60rpx;font-weight:bold;color:#fff;margin-bottom:32rpx;">冰</view>
+    <view style="font-size:40rpx;font-weight:600;color:#111;margin-bottom:12rpx;">冰冰快答小助手</view>
+    <view style="font-size:26rpx;color:#999;">智能问答 · 知识图谱</view>
   </view>
 
-  <view class="form-area">
-    <view class="login-box" wx:if="{{!loading && !error}}">
-      <button class="btn-wx" bindtap="onWxLogin">
-        <text class="wx-icon">💬</text>
-        <text>微信快捷登录</text>
-      </button>
+  <view style="width:100%;">
+    <view style="display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:16rpx;padding:60rpx 40rpx;" wx:if="{{!loading && !error}}">
+      <button style="width:100%;height:96rpx;line-height:96rpx;background:#07c160;color:#fff;font-size:32rpx;border-radius:12rpx;border:none;" bindtap="onWxLogin">微信快捷登录</button>
     </view>
 
-    <view class="login-box" wx:if="{{loading}}">
-      <view class="loading-spinner"></view>
-      <text class="loading-text">登录中...</text>
+    <view style="display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:16rpx;padding:60rpx 40rpx;" wx:if="{{loading}}">
+      <text style="font-size:28rpx;color:#666;">登录中...</text>
     </view>
 
-    <view class="login-box" wx:if="{{error}}">
-      <text class="error-text">{{error}}</text>
-      <button class="btn-retry" bindtap="onWxLogin">重试</button>
+    <view style="display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:16rpx;padding:60rpx 40rpx;" wx:if="{{error}}">
+      <text style="font-size:28rpx;color:#ef4444;margin-bottom:24rpx;">{{error}}</text>
+      <button style="width:100%;height:88rpx;line-height:88rpx;background:#333;color:#fff;font-size:30rpx;border-radius:12rpx;border:none;" bindtap="onWxLogin">重试</button>
     </view>
   </view>
 
-  <view class="footer">
-    <view class="tip">登录即表示同意相关服务协议</view>
+  <view style="margin-top:100rpx;">
+    <text style="font-size:22rpx;color:#ccc;">登录即表示同意相关服务协议</text>
   </view>
 </view>

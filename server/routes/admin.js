@@ -8,9 +8,14 @@ const redis = require('../config/redis');
 async function clearQACache(specificQuestion) {
     try {
         if (specificQuestion) {
-            // 精准清除：只删除包含该问题关键词的缓存
             const clean = specificQuestion.replace(/[？?！!。，,、\s]/g, '');
-            const keys = await redis.keys('qa:*');
+            const keys = [];
+            let cursor = '0';
+            do {
+                const [newCursor, batch] = await redis.scan(cursor, 'MATCH', 'qa:*', 'COUNT', 100);
+                cursor = newCursor;
+                keys.push(...batch);
+            } while (cursor !== '0');
             if (keys.length > 0) {
                 const toDelete = keys.filter(k => {
                     const keyText = k.replace('qa:', '');
@@ -19,8 +24,13 @@ async function clearQACache(specificQuestion) {
                 if (toDelete.length > 0) await redis.del(toDelete);
             }
         } else {
-            // 无法确定具体问题时，清除所有缓存
-            const keys = await redis.keys('qa:*');
+            const keys = [];
+            let cursor = '0';
+            do {
+                const [newCursor, batch] = await redis.scan(cursor, 'MATCH', 'qa:*', 'COUNT', 100);
+                cursor = newCursor;
+                keys.push(...batch);
+            } while (cursor !== '0');
             if (keys.length > 0) await redis.del(keys);
         }
     } catch (e) {}
@@ -69,7 +79,7 @@ router.get('/review/pending', async (req, res) => {
                     INNER JOIN question q ON a.question_id = q.question_id
                     LEFT JOIN user u ON a.responder_id = u.user_id
                     WHERE a.review_status = 0
-                    ORDER BY a.created_at ASC`);
+                    ORDER BY a.created_at ASC LIMIT 100`);
         res.json({ code: 0, data: result.recordset });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -78,6 +88,8 @@ router.post('/review', async (req, res) => {
     try {
         const { answer_id, reviewer_id, action, comment } = req.body;
         const pool = await getPool();
+        let questionText = null;
+
         await pool.request()
             .input('aid', sql.Int, answer_id)
             .input('rid', sql.Int, reviewer_id)
@@ -89,6 +101,7 @@ router.post('/review', async (req, res) => {
             .input('aid', sql.Int, answer_id)
             .input('status', sql.TinyInt, status)
             .query('UPDATE answer SET review_status = @status WHERE answer_id = @aid');
+
         if (action === 1) {
             const ans = await pool.request()
                 .input('aid', sql.Int, answer_id)
@@ -97,7 +110,7 @@ router.post('/review', async (req, res) => {
                         WHERE a.answer_id = @aid`);
             if (ans.recordset.length > 0) {
                 const row = ans.recordset[0];
-                // 过滤占位回答和推理过程，只存实质内容
+                questionText = row.question_text;
                 const badPatterns = ['正在整理', '暂未收录', '正在收集', '待补充', '首先，用户的问题是', '根据规则'];
                 const isBad = badPatterns.some(p => row.answer_text.includes(p));
                 if (!isBad) {
@@ -108,7 +121,6 @@ router.post('/review', async (req, res) => {
                         .input('src', sql.NVarChar, '审核入库')
                         .query(`INSERT INTO knowledge_base (question_text, answer_text, category, source)
                                 VALUES (@qt, @at, @cat, @src)`);
-                    // 自动向量化
                     const kbResult = await pool.request()
                         .input('qt', sql.NVarChar, row.question_text)
                         .query('SELECT TOP 1 kb_id FROM knowledge_base WHERE question_text = @qt ORDER BY kb_id DESC');
@@ -118,13 +130,12 @@ router.post('/review', async (req, res) => {
                 } else {
                     console.log('[审核] 跳过占位/推理回答:', row.question_text);
                 }
-                // 同步更新问题状态为已回答
                 await pool.request()
                     .input('qid', sql.Int, row.question_id)
                     .query('UPDATE question SET status = 1 WHERE question_id = @qid');
             }
         }
-        await clearQACache(row?.question_text);
+        await clearQACache(questionText);
         res.json({ code: 0, msg: action === 1 ? '审核通过并入库' : '已拒绝' });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
@@ -249,10 +260,15 @@ router.post('/verified/revoke', async (req, res) => {
 router.get('/kb/list', async (req, res) => {
     try {
         const pool = await getPool();
-        const result = await pool.request()
-            .query(`SELECT kb_id, question_text, answer_text, category, source, hit_count, is_active, created_at
-                    FROM knowledge_base ORDER BY kb_id DESC`);
-        res.json({ code: 0, data: result.recordset });
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const size = Math.min(100, Math.max(1, parseInt(req.query.size) || 50));
+        const offset = (page - 1) * size;
+        const [result, countResult] = await Promise.all([
+            pool.request().query(`SELECT kb_id, question_text, answer_text, category, source, hit_count, is_active, created_at
+                        FROM knowledge_base ORDER BY kb_id DESC LIMIT ${size} OFFSET ${offset}`),
+            pool.request().query('SELECT COUNT(*) AS total FROM knowledge_base')
+        ]);
+        res.json({ code: 0, data: result.recordset, total: countResult.recordset[0].total, page, size });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });
 
@@ -330,41 +346,56 @@ router.post('/review/batch', async (req, res) => {
         }
         answer_ids = answer_ids.map(id => parseInt(id));
         const pool = await getPool();
+        const status = action === 1 ? 1 : 2;
+        const placeholders = answer_ids.map((_, i) => `@id${i}`).join(',');
+
+        // 批量更新状态
+        const updateReq = pool.request();
+        answer_ids.forEach((id, i) => updateReq.input(`id${i}`, sql.Int, id));
+        updateReq.input('status', sql.TinyInt, status);
+        await updateReq.query(`UPDATE answer SET review_status = @status WHERE answer_id IN (${placeholders})`);
+
         let approved = 0, rejected = 0;
-        for (const aid of answer_ids) {
-            const status = action === 1 ? 1 : 2;
-            await pool.request()
-                .input('aid', sql.Int, aid)
-                .input('status', sql.TinyInt, status)
-                .query('UPDATE answer SET review_status = @status WHERE answer_id = @aid');
-            if (action === 1) {
-                const ans = await pool.request()
-                    .input('aid', sql.Int, aid)
-                    .query(`SELECT a.answer_text, a.question_id, q.question_text, q.category
-                            FROM answer a INNER JOIN question q ON a.question_id = q.question_id
-                            WHERE a.answer_id = @aid`);
-                if (ans.recordset.length > 0) {
-                    const row = ans.recordset[0];
-                    const badPatterns = ['正在整理', '暂未收录', '首先，用户的问题是', '根据规则'];
-                    const isBad = badPatterns.some(p => row.answer_text.includes(p));
-                    if (!isBad) {
-                        await pool.request()
-                            .input('qt', sql.NVarChar, row.question_text)
-                            .input('at', sql.NVarChar, row.answer_text)
-                            .input('cat', sql.NVarChar, row.category || '未分类')
-                            .input('src', sql.NVarChar, '审核入库')
-                            .query(`INSERT INTO knowledge_base (question_text, answer_text, category, source)
-                                    VALUES (@qt, @at, @cat, @src)`);
-                    }
-                    await pool.request()
-                        .input('qid', sql.Int, row.question_id)
-                        .query('UPDATE question SET status = 1 WHERE question_id = @qid');
-                    approved++;
+
+        if (action === 1) {
+            // 批量查询关联数据
+            const queryReq = pool.request();
+            answer_ids.forEach((id, i) => queryReq.input(`id${i}`, sql.Int, id));
+            const ans = await queryReq.query(`
+                SELECT a.answer_id, a.answer_text, a.question_id, q.question_text, q.category
+                FROM answer a INNER JOIN question q ON a.question_id = q.question_id
+                WHERE a.answer_id IN (${placeholders})`);
+
+            const badPatterns = ['正在整理', '暂未收录', '首先，用户的问题是', '根据规则'];
+            const qidsToUpdate = [];
+
+            for (const row of ans.recordset) {
+                const isBad = badPatterns.some(p => row.answer_text.includes(p));
+                if (!isBad) {
+                    const insReq = pool.request();
+                    await insReq
+                        .input('qt', sql.NVarChar, row.question_text)
+                        .input('at', sql.NVarChar, row.answer_text)
+                        .input('cat', sql.NVarChar, row.category || '未分类')
+                        .input('src', sql.NVarChar, '审核入库')
+                        .query(`INSERT INTO knowledge_base (question_text, answer_text, category, source)
+                                VALUES (@qt, @at, @cat, @src)`);
                 }
-            } else {
-                rejected++;
+                qidsToUpdate.push(row.question_id);
+                approved++;
             }
+
+            // 批量更新问题状态
+            if (qidsToUpdate.length > 0) {
+                const qPlaceholders = qidsToUpdate.map((_, i) => `@qid${i}`).join(',');
+                const qReq = pool.request();
+                qidsToUpdate.forEach((id, i) => qReq.input(`qid${i}`, sql.Int, id));
+                await qReq.query(`UPDATE question SET status = 1 WHERE question_id IN (${qPlaceholders})`);
+            }
+        } else {
+            rejected = answer_ids.length;
         }
+
         await clearQACache();
         res.json({ code: 0, msg: `批量${action === 1 ? '通过' : '拒绝'}: ${approved}条通过, ${rejected}条拒绝` });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
@@ -379,12 +410,13 @@ router.post('/kb/delete-batch', async (req, res) => {
         }
         kb_ids = kb_ids.map(id => parseInt(id));
         const pool = await getPool();
-        for (const id of kb_ids) {
-            await pool.request()
-                .input('id', sql.Int, id)
-                .query('DELETE FROM knowledge_base WHERE kb_id = @id');
+        const placeholders = kb_ids.map((_, i) => `@id${i}`).join(',');
+        const delReq = pool.request();
+        kb_ids.forEach((id, i) => delReq.input(`id${i}`, sql.Int, id));
+        await delReq.query(`DELETE FROM knowledge_base WHERE kb_id IN (${placeholders})`);
+        kb_ids.forEach(id => {
             try { embedding.removeVector && embedding.removeVector(id); } catch (e) {}
-        }
+        });
         await clearQACache();
         res.json({ code: 0, msg: `已删除 ${kb_ids.length} 条` });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
@@ -589,18 +621,23 @@ router.post('/pending-questions/delete', async (req, res) => {
         }
         question_ids = question_ids.map(id => parseInt(id));
         const pool = await getPool();
-        for (const qid of question_ids) {
-            // 先删 review（外键约束）
-            await pool.request()
-                .input('qid', sql.Int, qid)
-                .query(`DELETE FROM review WHERE answer_id IN (SELECT answer_id FROM answer WHERE question_id = @qid)`);
-            await pool.request()
-                .input('qid', sql.Int, qid)
-                .query('DELETE FROM answer WHERE question_id = @qid');
-            await pool.request()
-                .input('qid', sql.Int, qid)
-                .query('DELETE FROM question WHERE question_id = @qid');
-        }
+        const placeholders = question_ids.map((_, i) => `@qid${i}`).join(',');
+
+        // 批量删除 review（外键约束）
+        const reviewReq = pool.request();
+        question_ids.forEach((id, i) => reviewReq.input(`qid${i}`, sql.Int, id));
+        await reviewReq.query(`DELETE FROM review WHERE answer_id IN (SELECT answer_id FROM answer WHERE question_id IN (${placeholders}))`);
+
+        // 批量删除 answer
+        const ansReq = pool.request();
+        question_ids.forEach((id, i) => ansReq.input(`qid${i}`, sql.Int, id));
+        await ansReq.query(`DELETE FROM answer WHERE question_id IN (${placeholders})`);
+
+        // 批量删除 question
+        const qReq = pool.request();
+        question_ids.forEach((id, i) => qReq.input(`qid${i}`, sql.Int, id));
+        await qReq.query(`DELETE FROM question WHERE question_id IN (${placeholders})`);
+
         res.json({ code: 0, msg: `已删除 ${question_ids.length} 个问题` });
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
 });

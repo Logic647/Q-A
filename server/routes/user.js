@@ -20,9 +20,10 @@ router.post('/login', async (req, res) => {
         }
         if (!userOpenid) return res.json({ code: -1, msg: '缺少登录凭证' });
 
+        const userCols = 'user_id, openid, nickname, real_name, student_id, phone, email, college, major, enrollment_year, role, auth_status, avatar_url, created_at, updated_at';
         let result = await pool.request()
             .input('openid', sql.NVarChar, userOpenid)
-            .query('SELECT * FROM user WHERE openid = @openid');
+            .query(`SELECT ${userCols} FROM user WHERE openid = @openid`);
 
         if (result.recordset.length === 0) {
             await pool.request()
@@ -31,7 +32,7 @@ router.post('/login', async (req, res) => {
                 .query('INSERT INTO user (openid, nickname) VALUES (@openid, @nickname)');
             result = await pool.request()
                 .input('openid', sql.NVarChar, userOpenid)
-                .query('SELECT * FROM user WHERE openid = @openid');
+                .query(`SELECT ${userCols} FROM user WHERE openid = @openid`);
         }
         res.json({ code: 0, data: result.recordset[0] });
     } catch (err) {
@@ -106,7 +107,7 @@ router.get('/info/:id', async (req, res) => {
         const pool = await getPool();
         const result = await pool.request()
             .input('uid', sql.Int, req.params.id)
-            .query('SELECT * FROM user WHERE user_id = @uid');
+            .query('SELECT user_id, openid, nickname, real_name, student_id, phone, email, college, major, enrollment_year, role, auth_status, avatar_url, created_at, updated_at FROM user WHERE user_id = @uid');
         if (result.recordset.length === 0) return res.json({ code: -1, msg: '用户不存在' });
         res.json({ code: 0, data: result.recordset[0] });
     } catch (err) {

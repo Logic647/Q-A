@@ -205,17 +205,6 @@ function saveVectors() {
     }
 }
 
-function loadVectors() {
-    try {
-        if (fs.existsSync(VECTOR_FILE)) {
-            const data = JSON.parse(fs.readFileSync(VECTOR_FILE, 'utf8'));
-            console.log(`[Embedding] 加载了 ${data.length} 条元数据（向量需重建）`);
-            return data;
-        }
-    } catch (e) {}
-    return [];
-}
-
 // 检查 API Key 是否配置
 function isConfigured() {
     return !!API_KEY;
@@ -223,5 +212,5 @@ function isConfigured() {
 
 module.exports = {
     getEmbedding, getEmbeddings, buildVectorIndex, addVector, removeVector,
-    searchVectors, cosineSimilarity, isConfigured, loadVectors
+    searchVectors, cosineSimilarity, isConfigured
 };
