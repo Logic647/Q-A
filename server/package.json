@@ -11,14 +11,9 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "amqplib": "^0.10.5",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "ioredis": "^5.6.1",
-    "jieba": "^1.0.0",
-    "msnodesqlv8": "^5.2.0",
-    "mssql": "^12.5.5",
-    "mysql2": "^3.22.5",
-    "neo4j-driver": "^5.28.0"
+    "mysql2": "^3.22.5"
   }
 }

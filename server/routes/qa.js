@@ -3,7 +3,6 @@ const router = express.Router();
 const { sql, getPool } = require('../config/db');
 const { askLLM } = require('../services/llm');
 const redis = require('../config/redis');
-const { retrieveKnowledge } = require('../services/kg');
 const embedding = require('../services/embedding');
 
 const CACHE_TTL = 3600;
@@ -38,26 +37,20 @@ router.post('/ask', async (req, res) => {
             if (cached) return res.json({ code: 0, data: JSON.parse(cached), cached: true });
         } catch (e) {}
 
-        // 2. 并行检索：图谱 + SQL知识库
-        const [graphKnowledge, sqlKnowledge] = await Promise.all([
-            retrieveKnowledge(question_text).catch(() => []),
-            (async () => {
-                try {
-                    const pool = await getPool();
-                    const r = await pool.request()
-                        .input('q', sql.NVarChar, `%${qClean}%`)
-                        .query(`SELECT TOP 3 question_text, answer_text, category
-                                FROM knowledge_base WHERE is_active = 1
-                                AND (question_text LIKE @q OR keywords LIKE @q OR answer_text LIKE @q)
-                                ORDER BY hit_count DESC`);
-                    return r.recordset.map(row =>
-                        `【${row.category || '通用'}】${row.question_text}：${row.answer_text}`
-                    );
-                } catch (e) { return []; }
-            })()
-        ]);
-
-        let knowledge = [...graphKnowledge, ...sqlKnowledge];
+        // 2. 检索 SQL 知识库
+        let knowledge = [];
+        try {
+            const pool = await getPool();
+            const r = await pool.request()
+                .input('q', sql.NVarChar, `%${qClean}%`)
+                .query(`SELECT TOP 3 question_text, answer_text, category
+                        FROM knowledge_base WHERE is_active = 1
+                        AND (question_text LIKE @q OR keywords LIKE @q OR answer_text LIKE @q)
+                        ORDER BY hit_count DESC`);
+            knowledge = r.recordset.map(row =>
+                `【${row.category || '通用'}】${row.question_text}：${row.answer_text}`
+            );
+        } catch (e) {}
 
         // 3.5 向量语义搜索（Embedding）
         if (knowledge.length < 2 && embedding.isConfigured()) {
