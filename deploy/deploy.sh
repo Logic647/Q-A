@@ -29,7 +29,7 @@ npm install --production
 echo "[3/4] 配置环境变量..."
 if [ ! -f .env ]; then
     cat > .env << 'EOF'
-SF_EMBEDDING_KEY=REDACTED-EMBEDDING-API-KEY
+SF_EMBEDDING_KEY=sk-your_siliconflow_key_here
 EOF
     echo "已创建 .env 文件"
 fi
