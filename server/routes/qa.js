@@ -4,22 +4,9 @@ const { sql, getPool } = require('../config/db');
 const { askLLM } = require('../services/llm');
 const redis = require('../config/redis');
 const embedding = require('../services/embedding');
+const { clearQACache } = require('../utils');
 
 const CACHE_TTL = 3600;
-
-// 清除问答缓存
-async function clearQACache() {
-    try {
-        const keys = [];
-        let cursor = '0';
-        do {
-            const [newCursor, batch] = await redis.scan(cursor, 'MATCH', 'qa:*', 'COUNT', 100);
-            cursor = newCursor;
-            keys.push(...batch);
-        } while (cursor !== '0');
-        if (keys.length > 0) await redis.del(keys);
-    } catch (e) {}
-}
 
 // ============ RAG 问答核心 ============
 router.post('/ask', async (req, res) => {
@@ -223,6 +210,70 @@ router.post('/ask', async (req, res) => {
 });
 
 // ============ 其他接口保持不变 ============
+
+// 问答反馈接口
+router.post('/feedback', async (req, res) => {
+    try {
+        const { answer_id, user_id, score, comment } = req.body;
+        
+        // 参数验证
+        if (!answer_id || !user_id) {
+            return res.json({ code: -1, msg: '缺少必要参数' });
+        }
+        
+        if (score !== undefined && (score < 1 || score > 5)) {
+            return res.json({ code: -1, msg: '评分范围为1-5' });
+        }
+
+        const pool = await getPool();
+        
+        // 检查是否已反馈
+        const existing = await pool.request()
+            .input('aid', sql.Int, answer_id)
+            .input('uid', sql.Int, user_id)
+            .query('SELECT feedback_id FROM feedback WHERE answer_id = @aid AND user_id = @uid');
+        
+        if (existing.recordset.length > 0) {
+            // 更新反馈
+            await pool.request()
+                .input('fid', sql.Int, existing.recordset[0].feedback_id)
+                .input('score', sql.Int, score || 3)
+                .input('comment', sql.NVarChar, comment || '')
+                .query('UPDATE feedback SET score = @score, comment = @comment WHERE feedback_id = @fid');
+        } else {
+            // 新增反馈
+            await pool.request()
+                .input('aid', sql.Int, answer_id)
+                .input('uid', sql.Int, user_id)
+                .input('score', sql.Int, score || 3)
+                .input('comment', sql.NVarChar, comment || '')
+                .query('INSERT INTO feedback (answer_id, user_id, score, comment) VALUES (@aid, @uid, @score, @comment)');
+        }
+
+        res.json({ code: 0, msg: '感谢您的反馈！' });
+    } catch (err) {
+        console.log('[Feedback] 错误:', err.message);
+        res.status(500).json({ code: -1, msg: '反馈提交失败' });
+    }
+});
+
+// 获取问答反馈统计
+router.get('/feedback/stats', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .query(`SELECT 
+                COUNT(*) as total_feedback,
+                AVG(score) as avg_score,
+                SUM(CASE WHEN score >= 4 THEN 1 ELSE 0 END) as positive_count,
+                SUM(CASE WHEN score <= 2 THEN 1 ELSE 0 END) as negative_count
+                FROM feedback`);
+        
+        res.json({ code: 0, data: result.recordset[0] });
+    } catch (err) {
+        res.status(500).json({ code: -1, msg: err.message });
+    }
+});
 
 router.get('/question/:id', async (req, res) => {
     try {

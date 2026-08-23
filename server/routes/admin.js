@@ -3,38 +3,7 @@ const router = express.Router();
 const { sql, getPool } = require('../config/db');
 const embedding = require('../services/embedding');
 const redis = require('../config/redis');
-
-// 清除问答缓存（知识库变更时调用）
-async function clearQACache(specificQuestion) {
-    try {
-        if (specificQuestion) {
-            const clean = specificQuestion.replace(/[？?！!。，,、\s]/g, '');
-            const keys = [];
-            let cursor = '0';
-            do {
-                const [newCursor, batch] = await redis.scan(cursor, 'MATCH', 'qa:*', 'COUNT', 100);
-                cursor = newCursor;
-                keys.push(...batch);
-            } while (cursor !== '0');
-            if (keys.length > 0) {
-                const toDelete = keys.filter(k => {
-                    const keyText = k.replace('qa:', '');
-                    return keyText.includes(clean) || clean.includes(keyText);
-                });
-                if (toDelete.length > 0) await redis.del(toDelete);
-            }
-        } else {
-            const keys = [];
-            let cursor = '0';
-            do {
-                const [newCursor, batch] = await redis.scan(cursor, 'MATCH', 'qa:*', 'COUNT', 100);
-                cursor = newCursor;
-                keys.push(...batch);
-            } while (cursor !== '0');
-            if (keys.length > 0) await redis.del(keys);
-        }
-    } catch (e) {}
-}
+const { clearQACache } = require('../utils');
 
 // 知识库入库后自动向量化
 async function autoVectorize(kbId, questionText, answerText, category) {
@@ -52,19 +21,102 @@ async function autoVectorize(kbId, questionText, answerText, category) {
 router.get('/stats', async (req, res) => {
     try {
         const pool = await getPool();
-        const [questions, answers, kb, lowScore] = await Promise.all([
-            pool.request().query('SELECT COUNT(*) AS total, SUM(CASE WHEN status=0 THEN 1 ELSE 0 END) AS pending FROM question'),
-            pool.request().query('SELECT COUNT(*) AS total, SUM(CASE WHEN source=1 THEN 1 ELSE 0 END) AS auto_count, SUM(CASE WHEN source=2 THEN 1 ELSE 0 END) AS manual_count FROM answer'),
-            pool.request().query('SELECT COUNT(*) AS total, SUM(CASE WHEN source=N\'审核入库\' THEN 1 ELSE 0 END) AS from_review FROM knowledge_base'),
-            pool.request().query('SELECT COUNT(*) AS count FROM feedback WHERE score <= 2')
+        const [pendingReview, kb, lowScore] = await Promise.all([
+            pool.request().query('SELECT IFNULL(COUNT(*), 0) AS count FROM answer WHERE review_status = 0'),
+            pool.request().query("SELECT COUNT(*) AS total, IFNULL(SUM(CASE WHEN source='审核入库' THEN 1 ELSE 0 END), 0) AS from_review FROM knowledge_base"),
+            pool.request().query('SELECT IFNULL(COUNT(*), 0) AS count FROM feedback WHERE score <= 2')
         ]);
         res.json({ code: 0, data: {
-            questions: questions.recordset[0],
-            answers: answers.recordset[0],
-            knowledge_base: kb.recordset[0],
-            low_score_count: lowScore.recordset[0].count
+            pending_review: Number(pendingReview.recordset[0].count),
+            knowledge_base: { total: Number(kb.recordset[0].total), from_review: Number(kb.recordset[0].from_review) },
+            low_score_count: Number(lowScore.recordset[0].count)
         }});
     } catch (err) { res.status(500).json({ code: -1, msg: err.message }); }
+});
+
+// 详细统计报表
+router.get('/report', async (req, res) => {
+    try {
+        const { days = 7 } = req.query;
+        const pool = await getPool();
+        
+        // 并行查询各项统计
+        const [
+            userStats,
+            questionStats,
+            answerStats,
+            feedbackStats,
+            categoryStats,
+            dailyStats
+        ] = await Promise.all([
+            // 用户统计
+            pool.request().query(`
+                SELECT 
+                    COUNT(*) as total_users,
+                    SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL ${parseInt(days)} DAY) THEN 1 ELSE 0 END) as new_users
+                FROM user
+            `),
+            // 问题统计
+            pool.request().query(`
+                SELECT 
+                    COUNT(*) as total_questions,
+                    SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as pending_questions,
+                    SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as answered_questions
+                FROM question
+            `),
+            // 回答统计
+            pool.request().query(`
+                SELECT 
+                    COUNT(*) as total_answers,
+                    SUM(CASE WHEN review_status = 0 THEN 1 ELSE 0 END) as pending_review,
+                    SUM(CASE WHEN review_status = 1 THEN 1 ELSE 0 END) as approved,
+                    SUM(CASE WHEN review_status = 2 THEN 1 ELSE 0 END) as rejected
+                FROM answer
+            `),
+            // 反馈统计
+            pool.request().query(`
+                SELECT 
+                    COUNT(*) as total_feedback,
+                    IFNULL(AVG(score), 0) as avg_score,
+                    SUM(CASE WHEN score >= 4 THEN 1 ELSE 0 END) as positive,
+                    SUM(CASE WHEN score <= 2 THEN 1 ELSE 0 END) as negative
+                FROM feedback
+            `),
+            // 分类统计
+            pool.request().query(`
+                SELECT category, COUNT(*) as count
+                FROM knowledge_base
+                WHERE is_active = 1
+                GROUP BY category
+                ORDER BY count DESC
+                LIMIT 10
+            `),
+            // 每日统计
+            pool.request().query(`
+                SELECT 
+                    DATE(created_at) as date,
+                    COUNT(*) as questions
+                FROM question
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL ${parseInt(days)} DAY)
+                GROUP BY DATE(created_at)
+                ORDER BY date DESC
+            `)
+        ]);
+
+        res.json({
+            code: 0,
+            data: {
+                users: userStats.recordset[0],
+                questions: questionStats.recordset[0],
+                answers: answerStats.recordset[0],
+                feedback: feedbackStats.recordset[0],
+                categories: categoryStats.recordset,
+                daily: dailyStats.recordset
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ code: -1, msg: err.message });
+    }
 });
 
 // ========== 审核管理 ==========

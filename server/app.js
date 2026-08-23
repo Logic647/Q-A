@@ -13,23 +13,47 @@ try {
     });
 } catch (e) {}
 
-// CORS: 仅允许小程序和开发环境
+// 导入中间件
+const { limiters } = require('./middleware/rateLimit');
+const { ipWhitelist } = require('./middleware/ipWhitelist');
+const { requestTimeout, slowRequestLogger } = require('./middleware/timeout');
+
+// CORS: 仅允许小程序和管理后台
 const ALLOWED_ORIGINS = [
     'https://servicewechat.com',
-    'http://localhost',
-    'http://127.0.0.1'
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://logic-yjb.top'
 ];
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
+        // 允许无 origin 的请求（如小程序、curl、服务器端调用）
+        if (!origin) {
+            return callback(null, true);
+        }
+        // 检查白名单
+        if (ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
             callback(null, true);
         } else {
-            callback(null, true); // 生产环境可改为 callback(new Error('Not allowed'))
+            console.log('[CORS] 拒绝跨域请求:', origin);
+            callback(new Error('跨域请求被拒绝'));
         }
-    }
+    },
+    credentials: true
 }));
 app.use(express.json({ limit: '2mb' }));
 app.use('/public', express.static(path.join(__dirname, 'public')));
+
+// 请求超时和慢请求日志
+app.use(requestTimeout(30000));
+app.use(slowRequestLogger(5000));
+
+// 根路径和记事本页面
+app.get('/', (req, res) => res.redirect('/public/notepad.html'));
+app.get('/notepad', (req, res) => res.redirect('/public/notepad.html'));
+app.get('/notepad.html', (req, res) => res.sendFile(path.join(__dirname, 'public/notepad.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public/admin.html')));
+app.get('/admin/', (req, res) => res.sendFile(path.join(__dirname, 'public/admin.html')));
 
 // Admin 认证中间件: 检查 X-Admin-Key 请求头
 const ADMIN_KEY = process.env.ADMIN_KEY || 'REDACTED-ADMIN-KEY';
@@ -41,10 +65,33 @@ function adminAuth(req, res, next) {
     next();
 }
 
-app.use('/api/user', require('./routes/user'));
-app.use('/api/qa', require('./routes/qa'));
-app.use('/api/info', require('./routes/info'));
-app.use('/api/admin', adminAuth, require('./routes/admin'));
+// Admin 登录接口（不需要认证）
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    if (username === 'admin' && password === 'REDACTED-ADMIN-PASSWORD') {
+        res.json({ code: 0, token: ADMIN_KEY, msg: '登录成功' });
+    } else {
+        res.json({ code: -1, msg: '用户名或密码错误' });
+    }
+});
+
+app.use('/api/user', limiters.login, require('./routes/user'));
+app.use('/api/qa', limiters.qa, require('./routes/qa'));
+app.use('/api/info', limiters.api, require('./routes/info'));
+app.use('/api/admin', limiters.api, adminAuth, ipWhitelist, require('./routes/admin'));
+
+// 全局错误处理中间件
+app.use((err, req, res, next) => {
+    if (err.type === 'entity.too.large') {
+        return res.status(413).json({
+            code: -1,
+            msg: '请求数据过大，请压缩内容后重试',
+            maxSize: '2MB'
+        });
+    }
+    console.error('[Server Error]', err.message);
+    res.status(500).json({ code: -1, msg: '服务器内部错误' });
+});
 
 // 启动时自动构建向量索引
 const embedding = require('./services/embedding');

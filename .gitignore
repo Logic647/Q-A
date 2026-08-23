@@ -3,28 +3,25 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
-# SQL Server data
-*.mdf
-*.ldf
-*.ndf
+# Environment / secrets
+.env
+.env.local
+
+# Runtime data
+server/data/
+server/uploads/
+server/logs/
+server/backup/
+server/debug.log
+*.log
+*.pid
 
 # Temp files
 server/临时文件/
-server/test_*.js
-server/check_*.js
-server/flush_cache.js
-server/list_models.js
-server/restart*.js
-server/restart*.bat
-server/start*.js
-server/stop.js
-server/update_*.js
-server/write_*.js
-*.log
-*.pid
-*.txt
+*.mdf
+*.ldf
+*.ndf
 
 # IDE
 .vs/
@@ -36,10 +33,9 @@ server/write_*.js
 Thumbs.db
 Desktop.ini
 
-# Environment
-.env
-.env.local
-
 # Build
 dist/
 build/
+
+# Project context (local only)
+server/.hermes.md

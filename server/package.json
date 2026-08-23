@@ -1,13 +1,22 @@
 {
-  "name": "server",
+  "name": "freshman-qa-server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "冰冰快答小助手 - 无锡学院新生问答系统",
+  "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "dev": "node --watch app.js",
+    "test": "node test/test_qa_all.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop qa-server",
+    "pm2:restart": "pm2 restart qa-server",
+    "pm2:logs": "pm2 logs qa-server",
+    "cache:flush": "node scripts/flush_cache.js",
+    "kb:init": "node scripts/init_kg.js",
+    "lint": "eslint . --ext .js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["qa", "chatbot", "university", "wechat-miniapp"],
+  "author": "杨健斌",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
@@ -15,5 +24,11 @@
     "express": "^5.2.1",
     "ioredis": "^5.6.1",
     "mysql2": "^3.22.5"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

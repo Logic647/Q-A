@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>冰冰快答小助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f4f6f8;--card:#fff;--border:#e2e6ea;--text:#1a1d21;--muted:#8b919a;
+  --primary:#6c5ce7;--primary-hover:#5a4bd1;--primary-light:rgba(108,92,231,0.08);
+  --danger:#ff6b6b;--danger-light:rgba(255,107,107,0.06);
+  --radius:14px;--radius-sm:10px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
+.app{display:flex;min-height:100vh}
+
+.sidebar{width:340px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-header{padding:24px 20px 16px;border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.brand-avatar{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#6c5ce7,#a29bfe);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;font-weight:700;box-shadow:0 4px 12px rgba(108,92,231,0.3)}
+.brand-info h1{font-size:17px;font-weight:700;letter-spacing:-0.3px}
+.brand-info p{font-size:12px;color:var(--muted);margin-top:1px}
+.search-wrap{position:relative}
+.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.search-wrap input{width:100%;padding:10px 14px 10px 38px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;background:var(--bg);outline:none;transition:all .2s;color:var(--text)}
+.search-wrap input:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 3px var(--primary-light)}
+.search-wrap input::placeholder{color:var(--muted)}
+
+.note-list{flex:1;overflow-y:auto;padding:8px 12px}
+.note-item{padding:14px 16px;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s;margin-bottom:4px;border:1.5px solid transparent}
+.note-item:hover{background:var(--bg)}
+.note-item.active{background:var(--primary-light);border-color:var(--primary)}
+.note-item-title{font-size:14px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note-item-preview{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note-item-time{font-size:11px;color:var(--muted);margin-top:6px;opacity:.6}
+
+.sidebar-footer{padding:12px 20px;border-top:1px solid var(--border)}
+.btn-new{width:100%;padding:10px;border-radius:var(--radius-sm);background:var(--primary);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(108,92,231,0.25)}
+.btn-new:hover{background:var(--primary-hover);transform:translateY(-1px);box-shadow:0 4px 12px rgba(108,92,231,0.35)}
+
+.stats-bar{padding:10px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.editor-area{flex:1;display:flex;flex-direction:column;padding:32px 44px;max-width:820px;margin:0 auto;width:100%}
+.editor-title-input{font-size:26px;font-weight:700;border:none;outline:none;background:transparent;width:100%;margin-bottom:12px;letter-spacing:-0.5px;color:var(--text)}
+.editor-title-input::placeholder{color:#c0c4cc}
+.editor-content{flex:1;font-size:15px;line-height:1.85;border:none;outline:none;background:transparent;resize:none;width:100%;color:var(--text)}
+.editor-content::placeholder{color:#c0c4cc}
+.editor-footer{display:flex;align-items:center;justify-content:space-between;padding-top:16px;border-top:1px solid var(--border);margin-top:16px}
+.editor-meta{font-size:12px;color:var(--muted)}
+.editor-actions{display:flex;gap:8px}
+
+.btn{padding:8px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;display:inline-flex;align-items:center;gap:6px}
+.btn-save{background:var(--primary);color:#fff}
+.btn-save:hover{background:var(--primary-hover);box-shadow:0 2px 8px rgba(108,92,231,0.3)}
+.btn-delete{background:var(--danger-light);color:var(--danger)}
+.btn-delete:hover{background:rgba(255,107,107,0.12)}
+
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);padding:40px}
+.empty-icon{font-size:64px;margin-bottom:16px;opacity:.35}
+.empty-text{font-size:16px;margin-bottom:4px}
+.empty-hint{font-size:13px;opacity:.5}
+
+mark{background:#fef08a;color:inherit;border-radius:2px;padding:0 1px}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d0d4da;border-radius:10px}
+
+@keyframes fadeSlide{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.note-item{animation:fadeSlide .2s ease}
+
+@media(max-width:768px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;height:42vh;border-right:none;border-bottom:1px solid var(--border)}
+  .main{height:58vh}
+  .editor-area{padding:20px 16px}
+  .editor-title-input{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">
+        <div class="brand-avatar">冰</div>
+        <div class="brand-info">
+          <h1>冰冰快答小助手</h1>
+          <p>快速记录 · 高效检索</p>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" placeholder="搜索记录..." autocomplete="off">
+      </div>
+    </div>
+    <div class="note-list" id="noteList"></div>
+    <div class="stats-bar">
+      <span id="statsText">共 0 条</span>
+      <span id="statsInfo"></span>
+    </div>
+    <div class="sidebar-footer">
+      <button class="btn-new" onclick="createNote()"><span>+</span> 快速记录</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="editor-area">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">💡</div>
+        <div class="empty-text">还没有任何记录</div>
+        <div class="empty-hint">点击下方「快速记录」开始</div>
+      </div>
+      <div id="editorContent" style="display:none;flex:1;display:flex;flex-direction:column">
+        <input class="editor-title-input" id="titleInput" placeholder="问题或标题..." autocomplete="off">
+        <textarea class="editor-content" id="contentInput" placeholder="写下答案或笔记内容..."></textarea>
+        <div class="editor-footer">
+          <span class="editor-meta" id="editorMeta"></span>
+          <div class="editor-actions">
+            <button class="btn btn-delete" onclick="deleteCurrent()">删除</button>
+            <button class="btn btn-save" onclick="saveCurrent()">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'bingbing_notes_v2';
+let notes = [];
+let activeId = null;
+let dirty = false;
+
+function load() {
+  // 清除旧版本数据
+  try { localStorage.removeItem('bingbing_notes'); } catch(e) {}
+  try { notes = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { notes = []; }
+}
+function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function fmtTime(ts) {
+  const d = new Date(ts), pad = n => String(n).padStart(2, '0');
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return `今天 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtFull(ts) {
+  const d = new Date(ts), pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fuzzyScore(text, query) {
+  if (!query) return 1;
+  const t = text.toLowerCase(), q = query.toLowerCase();
+  if (t.includes(q)) return 10;
+  let qi = 0, score = 0;
+  for (let i = 0; i < t.length && qi < q.length; i++) { if (t[i] === q[qi]) { score++; qi++; } }
+  return qi === q.length ? score / q.length : 0;
+}
+function highlight(text, query) {
+  if (!query) return esc(text);
+  const e = esc(text), q = query.toLowerCase();
+  let r = '', qi = 0;
+  for (let i = 0; i < e.length; i++) {
+    if (qi < q.length && e[i].toLowerCase() === q[qi]) { r += `<mark>${e[i]}</mark>`; qi++; } else r += e[i];
+  }
+  return r;
+}
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderList() {
+  const query = document.getElementById('searchInput').value.trim();
+  let filtered = notes.map(n => ({ ...n, score: fuzzyScore(n.title + ' ' + n.content, query) }));
+  if (query) filtered = filtered.filter(n => n.score > 0);
+  filtered.sort((a, b) => b.updatedAt - a.updatedAt);
+
+  document.getElementById('statsText').textContent = query ? `${filtered.length} / ${notes.length} 条` : `共 ${notes.length} 条`;
+
+  const list = document.getElementById('noteList');
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state" style="padding:40px 20px"><div class="empty-icon" style="font-size:40px">${query ? '🔍' : '📝'}</div><div class="empty-text" style="font-size:14px">${query ? '没有匹配的结果' : '还没有记录'}</div></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(n => `
+    <div class="note-item ${n.id === activeId ? 'active' : ''}" onclick="selectNote('${n.id}')">
+      <div class="note-item-title">${highlight(n.title || '无标题', query)}</div>
+      <div class="note-item-preview">${highlight(n.content.slice(0, 60) || '空白', query)}</div>
+      <div class="note-item-time">${fmtTime(n.updatedAt)}</div>
+    </div>
+  `).join('');
+}
+
+function selectNote(id) {
+  if (dirty && activeId) saveCurrent();
+  activeId = id;
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('editorContent').style.display = 'flex';
+  document.getElementById('titleInput').value = note.title;
+  document.getElementById('contentInput').value = note.content;
+  document.getElementById('editorMeta').textContent = `创建 ${fmtFull(note.createdAt)}  ·  修改 ${fmtFull(note.updatedAt)}`;
+  dirty = false;
+  renderList();
+}
+
+function createNote() {
+  if (dirty && activeId) saveCurrent();
+  const note = { id: genId(), title: '', content: '', createdAt: Date.now(), updatedAt: Date.now() };
+  notes.unshift(note);
+  persist();
+  selectNote(note.id);
+  document.getElementById('titleInput').focus();
+}
+
+function saveCurrent() {
+  if (!activeId) return;
+  const note = notes.find(n => n.id === activeId);
+  if (!note) return;
+  note.title = document.getElementById('titleInput').value.trim();
+  note.content = document.getElementById('contentInput').value;
+  note.updatedAt = Date.now();
+  persist();
+  dirty = false;
+  renderList();
+  document.getElementById('editorMeta').textContent = `创建 ${fmtFull(note.createdAt)}  ·  修改 ${fmtFull(note.updatedAt)}`;
+}
+
+function deleteCurrent() {
+  if (!activeId) return;
+  if (!confirm('确定删除这条记录？')) return;
+  notes = notes.filter(n => n.id !== activeId);
+  persist();
+  activeId = null;
+  document.getElementById('emptyState').style.display = '';
+  document.getElementById('editorContent').style.display = 'none';
+  renderList();
+}
+
+document.getElementById('titleInput').addEventListener('input', () => { dirty = true; });
+document.getElementById('contentInput').addEventListener('input', () => { dirty = true; });
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(renderList, 100);
+});
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); createNote(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveCurrent(); }
+});
+
+load();
+renderList();
+</script>
+</body>
+</html>

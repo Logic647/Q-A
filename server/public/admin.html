@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理后台 - 冰冰快答小助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f7f8fa;--card:#fff;--border:#e8eaed;--text:#1f2937;--muted:#6b7280;--light:#9ca3af;
+  --primary:#7c3aed;--primary-hover:#6d28d9;--primary-bg:#f5f3ff;--primary-border:#c4b5fd;
+  --success:#059669;--success-bg:#ecfdf5;--success-border:#a7f3d0;
+  --danger:#dc2626;--danger-bg:#fef2f2;--danger-border:#fecaca;
+  --warning:#d97706;--warning-bg:#fffbeb;--warning-border:#fde68a;
+  --radius:10px;--radius-lg:14px;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 6px rgba(0,0,0,0.05),0 2px 4px rgba(0,0,0,0.04);
+}
+body{font-family:'SF Pro Text','Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;font-size:14px}
+
+/* ===== 登录 ===== */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#f5f3ff 0%,#ede9fe 50%,#f0f2f5 100%);padding:20px}
+.login-box{background:var(--card);border-radius:20px;padding:48px 40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(124,58,237,0.08)}
+.login-logo{text-align:center;margin-bottom:36px}
+.login-logo-icon{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:inline-flex;align-items:center;justify-content:center;font-size:22px;color:#fff;font-weight:700;box-shadow:0 8px 24px rgba(124,58,237,0.25)}
+.login-logo h1{font-size:22px;font-weight:700;margin-top:16px;letter-spacing:-0.3px}
+.login-logo p{font-size:13px;color:var(--muted);margin-top:4px}
+.field{margin-bottom:20px}
+.field label{display:block;font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px}
+.field input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;transition:all .2s;background:var(--bg)}
+.field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(124,58,237,0.1);background:#fff}
+.login-btn{width:100%;padding:12px;border-radius:var(--radius);background:var(--primary);color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s}
+.login-btn:hover{background:var(--primary-hover);box-shadow:0 4px 12px rgba(124,58,237,0.3)}
+.login-btn:active{transform:scale(0.98)}
+.login-btn:disabled{opacity:.5;cursor:not-allowed}
+.login-msg{font-size:13px;text-align:center;margin-top:14px;min-height:20px;color:var(--danger)}
+
+/* ===== 后台布局 ===== */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.sidebar-head{padding:20px;border-bottom:1px solid var(--border)}
+.sidebar-brand{display:flex;align-items:center;gap:12px}
+.sidebar-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;font-weight:700}
+.sidebar-title{font-size:15px;font-weight:700;letter-spacing:-0.2px}
+.sidebar-subtitle{font-size:11px;color:var(--muted)}
+.sidebar-nav{flex:1;padding:8px}
+.nav-section{font-size:11px;font-weight:600;color:var(--light);text-transform:uppercase;letter-spacing:.8px;padding:16px 16px 8px}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .12s;margin-bottom:2px}
+.nav-btn:hover{background:var(--bg);color:var(--text)}
+.nav-btn.on{background:var(--primary-bg);color:var(--primary);font-weight:600}
+.nav-btn .icon{font-size:16px;width:20px;text-align:center}
+.nav-btn .badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;min-width:18px;text-align:center}
+.sidebar-foot{padding:12px 16px;border-top:1px solid var(--border)}
+.logout-btn{width:100%;padding:8px;border-radius:var(--radius);background:transparent;color:var(--muted);border:1px solid var(--border);font-size:13px;cursor:pointer;transition:all .15s}
+.logout-btn:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-bg)}
+
+.main{flex:1;padding:28px 32px;min-width:0}
+.page-head{margin-bottom:28px}
+.page-head h2{font-size:24px;font-weight:700;letter-spacing:-0.5px}
+.page-head p{font-size:13px;color:var(--muted);margin-top:4px}
+
+/* ===== 概览卡片 ===== */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;transition:box-shadow .15s}
+.stat:hover{box-shadow:var(--shadow-md)}
+.stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px}
+.stat-icon.purple{background:var(--primary-bg);color:var(--primary)}
+.stat-icon.green{background:var(--success-bg);color:var(--success)}
+.stat-icon.orange{background:var(--warning-bg);color:var(--warning)}
+.stat-icon.red{background:var(--danger-bg);color:var(--danger)}
+.stat-num{font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1}
+.stat-label{font-size:13px;color:var(--muted);margin-top:6px}
+
+/* ===== 表格 ===== */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.card-title{font-size:15px;font-weight:600}
+.card-body{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 16px;font-size:12px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border);background:var(--bg);white-space:nowrap}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(124,58,237,0.02)}
+.cell-main{font-weight:500;color:var(--text)}
+.cell-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.cell-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.tag-purple{background:var(--primary-bg);color:var(--primary)}
+.tag-green{background:var(--success-bg);color:var(--success)}
+.tag-orange{background:var(--warning-bg);color:var(--warning)}
+.tag-red{background:var(--danger-bg);color:var(--danger)}
+.tag-gray{background:#f3f4f6;color:#6b7280}
+
+/* ===== 按钮 ===== */
+.btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .12s;border:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn:active{transform:scale(0.97)}
+.btn-p{background:var(--primary);color:#fff}.btn-p:hover{background:var(--primary-hover)}
+.btn-s{background:var(--success);color:#fff}.btn-s:hover{opacity:.9}
+.btn-d{background:var(--danger);color:#fff}.btn-d:hover{opacity:.9}
+.btn-o{background:transparent;color:var(--muted);border:1px solid var(--border)}.btn-o:hover{border-color:var(--text);color:var(--text)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{width:32px;height:32px;padding:0;justify-content:center;border-radius:8px}
+
+/* ===== 批量操作 ===== */
+.batch{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:var(--radius);margin-bottom:12px;font-size:13px}
+.batch-text{color:var(--primary);font-weight:500}
+.cb{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+
+/* ===== 模态框 ===== */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s;backdrop-filter:blur(2px)}
+.overlay.on{opacity:1;pointer-events:auto}
+.dialog{background:var(--card);border-radius:var(--radius-lg);width:100%;max-width:520px;box-shadow:0 25px 60px rgba(0,0,0,0.15);transform:translateY(8px);transition:transform .2s}
+.overlay.on .dialog{transform:translateY(0)}
+.dialog-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0}
+.dialog-head h3{font-size:17px;font-weight:600}
+.dialog-close{width:28px;height:28px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .12s}
+.dialog-close:hover{background:var(--bg);color:var(--text)}
+.dialog-body{padding:16px 24px}
+.dialog-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 24px 20px}
+.field textarea{width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:14px;font-family:inherit;outline:none;resize:vertical;transition:border-color .2s;min-height:140px;line-height:1.6}
+.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(124,58,237,0.1)}
+.field select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;outline:none;background:var(--card);cursor:pointer}
+.field select:focus{border-color:var(--primary)}
+
+/* ===== Toast ===== */
+.toast{position:fixed;top:24px;right:24px;padding:12px 20px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:300;transform:translateX(120%);transition:transform .3s;box-shadow:var(--shadow-md)}
+.toast.show{transform:translateX(0)}
+.toast-ok{background:var(--success);color:#fff}
+.toast-err{background:var(--danger);color:#fff}
+
+/* ===== 空状态 ===== */
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.4}
+.empty-text{font-size:14px}
+
+/* ===== 工具类 ===== */
+.hidden{display:none!important}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.max-w{max-width:280px}
+
+/* ===== 响应式 ===== */
+@media(max-width:768px){
+  .sidebar{width:60px}.sidebar-title,.sidebar-subtitle,.nav-section,.nav-btn span:not(.icon),.nav-btn .badge,.sidebar-foot span{display:none}
+  .nav-btn{justify-content:center;padding:10px}.sidebar-head{padding:12px;justify-content:center}
+  .main{padding:16px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ===== 登录 ===== -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">冰</div>
+      <h1>冰冰快答</h1>
+      <p>管理后台</p>
+    </div>
+    <div class="field"><label>用户名</label><input id="u" type="text" placeholder="admin" autocomplete="username"></div>
+    <div class="field"><label>密码</label><input id="p" type="password" placeholder="请输入密码" autocomplete="current-password"></div>
+    <button class="login-btn" id="loginBtn" onclick="login()">登 录</button>
+    <div class="login-msg" id="loginMsg"></div>
+  </div>
+</div>
+
+<!-- ===== 后台 ===== -->
+<div class="layout hidden" id="app">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-brand">
+        <div class="sidebar-icon">冰</div>
+        <div><div class="sidebar-title">管理后台</div><div class="sidebar-subtitle">冰冰快答小助手</div></div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">数据</div>
+      <div class="nav-btn on" data-tab="overview" onclick="go('overview')"><span class="icon">📊</span><span>概览</span></div>
+      <div class="nav-section">内容管理</div>
+      <div class="nav-btn" data-tab="kb" onclick="go('kb')"><span class="icon">📚</span><span>知识库</span></div>
+      <div class="nav-btn" data-tab="review" onclick="go('review')"><span class="icon">✅</span><span>待审核</span><span class="badge" id="badgeReview" style="display:none">0</span></div>
+      <div class="nav-btn" data-tab="pending" onclick="go('pending')"><span class="icon">❓</span><span>待回答</span><span class="badge" id="badgePending" style="display:none">0</span></div>
+      <div class="nav-section">系统</div>
+      <div class="nav-btn" data-tab="users" onclick="go('users')"><span class="icon">👤</span><span>用户管理</span></div>
+    </nav>
+    <div class="sidebar-foot"><button class="logout-btn" onclick="logout()">退出登录</button></div>
+  </aside>
+
+  <main class="main">
+    <!-- 概览 -->
+    <section id="p-overview">
+      <div class="page-head"><h2>概览</h2><p>系统运行状态一览</p></div>
+      <div class="stat-grid" id="statGrid"></div>
+      <div class="card" style="margin-top:8px">
+        <div class="card-head"><span class="card-title">最近动态</span></div>
+        <div class="card-body" id="recentActivity" style="padding:20px;color:var(--muted);font-size:13px">加载中...</div>
+      </div>
+    </section>
+
+    <!-- 知识库 -->
+    <section id="p-kb" class="hidden">
+      <div class="page-head" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+        <div><h2>知识库</h2><p>管理问答知识库条目</p></div>
+        <button class="btn btn-p" onclick="editKB()">+ 添加条目</button>
+      </div>
+      <div class="card"><div class="card-body"><table><thead><tr><th>ID</th><th>问题</th><th>答案</th><th>分类</th><th>操作</th></tr></thead><tbody id="kbBody"></tbody></table></div></div>
+    </section>
+
+    <!-- 审核 -->
+    <section id="p-review" class="hidden">
+      <div class="page-head"><h2>待审核</h2><p>审核学生提交的回答内容</p></div>
+      <div class="card"><div class="card-body"><table><thead><tr><th>问题</th><th>回答</th><th>提交者</th><th>操作</th></tr></thead><tbody id="reviewBody"></tbody></table></div></div>
+    </section>
+
+    <!-- 待回答 -->
+    <section id="p-pending" class="hidden">
+      <div class="page-head"><h2>待回答</h2><p>知识库未覆盖的问题</p></div>
+      <div class="batch hidden" id="batchBar">
+        <input type="checkbox" class="cb" id="checkAll" onchange="checkAllFn()">
+        <span class="batch-text" id="batchText">已选 0 条</span>
+        <button class="btn btn-d btn-sm" onclick="batchDel()">批量删除</button>
+      </div>
+      <div class="card"><div class="card-body"><table><thead><tr><th style="width:36px"><input type="checkbox" class="cb" id="thCheck" onchange="checkAllFn()"></th><th>问题</th><th>分类</th><th>提问者</th><th>时间</th><th>操作</th></tr></thead><tbody id="pendingBody"></tbody></table></div></div>
+    </section>
+
+    <!-- 用户 -->
+    <section id="p-users" class="hidden">
+      <div class="page-head"><h2>用户管理</h2><p>已认证的在校学生</p></div>
+      <div class="card"><div class="card-body"><table><thead><tr><th>昵称</th><th>姓名</th><th>学号</th><th>状态</th><th>操作</th></tr></thead><tbody id="usersBody"></tbody></table></div></div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== 知识库弹窗 ===== -->
+<div class="overlay" id="kbDlg">
+  <div class="dialog">
+    <div class="dialog-head"><h3 id="kbTitle">添加条目</h3><button class="dialog-close" onclick="closeDlg('kbDlg')">×</button></div>
+    <div class="dialog-body">
+      <div class="field"><label>问题</label><input id="kbQ" type="text" placeholder="用户会问什么"></div>
+      <div class="field"><label>答案</label><textarea id="kbA" placeholder="标准回答内容"></textarea></div>
+      <div class="field"><label>分类</label>
+        <select id="kbC"><option>交通</option><option>费用</option><option>食堂</option><option>报到</option><option>宿舍</option><option>学校</option><option>其他</option></select>
+      </div>
+    </div>
+    <div class="dialog-foot"><button class="btn btn-o" onclick="closeDlg('kbDlg')">取消</button><button class="btn btn-p" onclick="saveKBItem()">保存</button></div>
+  </div>
+</div>
+
+<!-- ===== 回答弹窗 ===== -->
+<div class="overlay" id="ansDlg">
+  <div class="dialog">
+    <div class="dialog-head"><h3>回答问题</h3><button class="dialog-close" onclick="closeDlg('ansDlg')">×</button></div>
+    <div class="dialog-body">
+      <div style="background:var(--bg);padding:12px 16px;border-radius:var(--radius);margin-bottom:16px;font-size:14px;color:var(--text);border-left:3px solid var(--primary)" id="ansQuestion"></div>
+      <div class="field"><label>回答内容</label><textarea id="ansText" placeholder="输入回答..."></textarea></div>
+    </div>
+    <div class="dialog-foot"><button class="btn btn-o" onclick="closeDlg('ansDlg')">取消</button><button class="btn btn-p" onclick="submitAns()">提交回答</button></div>
+  </div>
+</div>
+
+<!-- ===== Toast ===== -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 错误处理增强 =====
+const _originalFetch = window.fetch;
+window.fetch = function(...args) {
+    return Promise.race([
+        _originalFetch.apply(this, args),
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('请求超时')), 15000)
+        )
+    ]);
+};
+
+const _originalApi = typeof api === 'function' ? api : null;
+if (_originalApi) {
+    window.api = async function(p, m='GET', d=null) {
+        try {
+            const result = await _originalApi(p, m, d);
+            if (result.code !== 0 && result.msg) {
+                toast(result.msg, 'err');
+            }
+            return result;
+        } catch (err) {
+            toast('网络请求失败: ' + err.message, 'err');
+            return { code: -1, msg: err.message };
+        }
+    };
+}
+const A='/api';let T=localStorage.getItem('at')||'',editId=null,ansId=null,selected=new Set();
+
+async function api(p,m='GET',d=null){const o={method:m,headers:{'Content-Type':'application/json','X-Admin-Key':T}};if(d)o.body=JSON.stringify(d);return(await fetch(A+p,o)).json()}
+function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast toast-'+type+' show';setTimeout(()=>t.classList.remove('show'),2500)}
+function closeDlg(id){document.getElementById(id).classList.remove('on')}
+function openDlg(id){document.getElementById(id).classList.add('on')}
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmt(t){if(!t)return'-';const d=new Date(t),p=n=>String(n).padStart(2,'0');return`${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`}
+
+// ===== 登录 =====
+async function login(){
+  const u=$('u').value.trim(),p=$('p').value;
+  if(!u||!p){$('loginMsg').textContent='请输入用户名和密码';return}
+  $('loginBtn').disabled=true;$('loginMsg').textContent='';
+  const r=await fetch(A+'/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+  const d=await r.json();$('loginBtn').disabled=false;
+  if(d.code===0&&d.token){T=d.token;localStorage.setItem('at',T);show()}else $('loginMsg').textContent=d.msg||'登录失败';
+}
+function logout(){T='';localStorage.removeItem('at');$('loginWrap').classList.remove('hidden');$('app').classList.add('hidden')}
+async function show(){$('loginWrap').classList.add('hidden');$('app').classList.remove('hidden');go('overview')}
+$('p').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+
+// ===== 导航 =====
+function go(tab){
+  document.querySelectorAll('[id^="p-"]').forEach(e=>e.classList.add('hidden'));
+  $('p-'+tab).classList.remove('hidden');
+  document.querySelectorAll('.nav-btn').forEach(e=>{e.classList.toggle('on',e.dataset.tab===tab)});
+  load(tab);
+}
+async function load(t){
+  if(t==='overview')await loadOverview();
+  else if(t==='kb')await loadKB();
+  else if(t==='review')await loadReview();
+  else if(t==='pending')await loadPending();
+  else if(t==='users')await loadUsers();
+}
+
+// ===== 概览 =====
+async function loadOverview(){
+  const [s,p] = await Promise.all([api('/admin/stats'),api('/admin/pending-questions')]);
+  if(s.code!==0)return;
+  const d=s.data,pc=p.code===0&&p.data?p.data.length:0;
+  // 更新徽章
+  if(d.pending_review>0){$('badgeReview').style.display='';$('badgeReview').textContent=d.pending_review}else $('badgeReview').style.display='none';
+  if(pc>0){$('badgePending').style.display='';$('badgePending').textContent=pc}else $('badgePending').style.display='none';
+
+  $('statGrid').innerHTML=`
+    <div class="stat"><div class="stat-icon orange">⏳</div><div class="stat-num">${d.pending_review||0}</div><div class="stat-label">待审核回答</div></div>
+    <div class="stat"><div class="stat-icon purple">❓</div><div class="stat-num">${pc}</div><div class="stat-label">待回答问题</div></div>
+    <div class="stat"><div class="stat-icon green">📚</div><div class="stat-num">${d.knowledge_base?.total||0}</div><div class="stat-label">知识库条目</div></div>
+    <div class="stat"><div class="stat-icon red">⬇️</div><div class="stat-num">${d.low_score_count||0}</div><div class="stat-label">低分回答</div></div>
+  `;
+  $('recentActivity').innerHTML=`<div style="display:flex;gap:24px;flex-wrap:wrap">
+    <div>知识库审核入库：<strong>${d.knowledge_base?.from_review||0}</strong> 条</div>
+  </div>`;
+}
+
+// ===== 知识库 =====
+async function loadKB(){
+  const r=await api('/admin/kb/list');if(r.code!==0)return;
+  const b=$('kbBody');
+  if(!r.data||!r.data.length){b.innerHTML='<tr><td colspan="5"><div class="empty"><div class="empty-icon">📚</div><div class="empty-text">知识库为空</div></div></td></tr>';return}
+  b.innerHTML=r.data.map(n=>`<tr>
+    <td style="color:var(--light);font-size:12px">${n.kb_id}</td>
+    <td><div class="cell-main truncate max-w">${esc(n.question_text)}</div></td>
+    <td><div class="cell-sub truncate max-w">${esc(n.answer_text)}</div></td>
+    <td><span class="cell-tag tag-purple">${esc(n.category||'其他')}</span></td>
+    <td style="white-space:nowrap"><button class="btn btn-o btn-sm" onclick='editKB(${n.kb_id},${JSON.stringify(n.question_text).replace(/'/g,"\\'")},${JSON.stringify(n.answer_text).replace(/'/g,"\\'")},"${esc(n.category||'其他')}")'>编辑</button> <button class="btn btn-d btn-sm" onclick="delKB(${n.kb_id})">删除</button></td>
+  </tr>`).join('');
+}
+function editKB(id,q,a,c){editId=id||null;$('kbTitle').textContent=id?'编辑条目':'添加条目';$('kbQ').value=q||'';$('kbA').value=a||'';$('kbC').value=c||'其他';openDlg('kbDlg')}
+async function saveKBItem(){
+  const q=$('kbQ').value.trim(),a=$('kbA').value.trim(),c=$('kbC').value;
+  if(!q||!a)return toast('请填写问题和答案','err');
+  if(editId)await api('/admin/kb/update','POST',{kb_id:editId,question_text:q,answer_text:a,category:c});
+  else await api('/admin/kb/add','POST',{question_text:q,answer_text:a,category:c});
+  closeDlg('kbDlg');toast(editId?'已更新':'已添加');loadKB();
+}
+async function delKB(id){if(!confirm('确定删除？'))return;await api('/admin/kb/delete','POST',{kb_id:id});toast('已删除');loadKB()}
+
+// ===== 审核 =====
+async function loadReview(){
+  const r=await api('/admin/review/pending');if(r.code!==0)return;
+  const b=$('reviewBody');
+  if(!r.data||!r.data.length){b.innerHTML='<tr><td colspan="4"><div class="empty"><div class="empty-icon">✅</div><div class="empty-text">没有待审核内容</div></div></td></tr>';return}
+  b.innerHTML=r.data.map(n=>`<tr>
+    <td><div class="cell-main truncate max-w">${esc(n.question_text)}</div></td>
+    <td><div class="cell-sub truncate max-w">${esc(n.answer_text)}</div></td>
+    <td>${esc(n.responder_name||'-')}</td>
+    <td style="white-space:nowrap"><button class="btn btn-s btn-sm" onclick="reviewAns(${n.answer_id},1)">通过</button> <button class="btn btn-d btn-sm" onclick="reviewAns(${n.answer_id},2)">拒绝</button></td>
+  </tr>`).join('');
+}
+async function reviewAns(id,act){await api('/admin/review','POST',{answer_id:id,reviewer_id:1,action:act});toast(act===1?'已通过':'已拒绝');loadReview();loadOverview()}
+
+// ===== 待回答 =====
+async function loadPending(){
+  const r=await api('/admin/pending-questions');if(r.code!==0)return;
+  selected.clear();$('batchBar').classList.add('hidden');
+  const b=$('pendingBody');
+  if(!r.data||!r.data.length){b.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">❓</div><div class="empty-text">没有待回答问题</div></div></td></tr>';return}
+  b.innerHTML=r.data.map(n=>`<tr>
+    <td><input type="checkbox" class="cb" value="${n.question_id}" onchange="selOne(${n.question_id},this.checked)"></td>
+    <td><div class="cell-main">${esc(n.question_text)}</div></td>
+    <td><span class="cell-tag tag-gray">${esc(n.category||'其他')}</span></td>
+    <td>${esc(n.asker_name||'-')}</td>
+    <td style="white-space:nowrap;color:var(--muted);font-size:12px">${fmt(n.created_at)}</td>
+    <td style="white-space:nowrap"><button class="btn btn-p btn-sm" onclick="openAns(${n.question_id},'${esc(n.question_text).replace(/'/g,"\\'")}')">回答</button> <button class="btn btn-d btn-sm" onclick="delPending(${n.question_id})">删除</button></td>
+  </tr>`).join('');
+}
+function selOne(id,on){on?selected.add(id):selected.delete(id);updBatch()}
+function checkAllFn(){const on=$('thCheck').checked;document.querySelectorAll('#pendingBody .cb').forEach(c=>{c.checked=on;const id=parseInt(c.value);on?selected.add(id):selected.delete(id)});updBatch()}
+function updBatch(){const n=selected.size;$('batchBar').classList.toggle('hidden',n===0);$('batchText').textContent=`已选 ${n} 条`}
+async function delPending(id){if(!confirm('确定删除？'))return;await api('/admin/pending-questions/delete','POST',{question_ids:[id]});toast('已删除');loadPending();loadOverview()}
+async function batchDel(){if(!selected.size)return;if(!confirm(`确定删除 ${selected.size} 条？`))return;await api('/admin/pending-questions/delete','POST',{question_ids:[...selected]});toast('批量删除完成');loadPending();loadOverview()}
+function openAns(id,q){ansId=id;$('ansQuestion').textContent=q;$('ansText').value='';openDlg('ansDlg')}
+async function submitAns(){const t=$('ansText').value.trim();if(!t||!ansId)return;await api('/qa/answer','POST',{question_id:ansId,user_id:1,answer_text:t});closeDlg('ansDlg');toast('回答已提交');loadPending()}
+
+// ===== 用户 =====
+async function loadUsers(){
+  const r=await api('/admin/verified/list');if(r.code!==0)return;
+  const b=$('usersBody');
+  if(!r.data||!r.data.length){b.innerHTML='<tr><td colspan="5"><div class="empty"><div class="empty-icon">👤</div><div class="empty-text">暂无认证用户</div></div></td></tr>';return}
+  b.innerHTML=r.data.map(n=>`<tr>
+    <td><div class="cell-main">${esc(n.nickname||'-')}</div></td>
+    <td>${esc(n.real_name||'-')}</td>
+    <td>${esc(n.student_id||'-')}</td>
+    <td><span class="cell-tag tag-green">已认证</span></td>
+    <td><button class="btn btn-d btn-sm" onclick="revoke(${n.user_id})">回收权限</button></td>
+  </tr>`).join('');
+}
+async function revoke(uid){if(!confirm('确定回收该用户权限？'))return;await api('/admin/verified/revoke','POST',{user_id:uid});toast('已回收');loadUsers()}
+
+// 初始化
+if(T)show();
+</script>
+</body>
+</html>
