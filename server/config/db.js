@@ -1,10 +1,11 @@
 const mysql = require('mysql2/promise');
+
 const mysqlConfig = {
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: 'REDACTED-DB-PASSWORD',
-    database: 'FreshmanQA',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || 'REDACTED-DB-PASSWORD',
+    database: process.env.DB_NAME || 'FreshmanQA',
     charset: 'utf8mb4',
     waitForConnections: true,
     connectionLimit: 10
@@ -51,4 +52,12 @@ function createRequest() {
     return req;
 }
 async function getPool() { return { request: createRequest }; }
-module.exports = { sql: { NVarChar: 'string', Int: 'int', TinyInt: 'tinyint' }, getPool };
+module.exports = {
+    sql: {
+        NVarChar: 'string',
+        Int: 'int',
+        TinyInt: 'tinyint',
+        Decimal: (precision, scale) => `decimal(${precision},${scale})`
+    },
+    getPool
+};

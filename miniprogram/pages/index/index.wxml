@@ -30,7 +30,6 @@
     <view style="border-top:1rpx solid #f0f0f0;padding:16rpx 24rpx 40rpx;">
       <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#555;" bindtap="goToAnswer"><text style="margin-right:16rpx;font-size:30rpx;">✏️</text>回答问题</view>
       <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#555;" bindtap="goToVerify"><text style="margin-right:16rpx;font-size:30rpx;">🪪</text>身份认证</view>
-      <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#555;" bindtap="goToAdmin"><text style="margin-right:16rpx;font-size:30rpx;">⚙️</text>管理后台</view>
       <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#555;" bindtap="clearAllHistory"><text style="margin-right:16rpx;font-size:30rpx;">🗑️</text>清空历史</view>
       <view style="display:flex;align-items:center;padding:20rpx 16rpx;border-radius:10rpx;font-size:28rpx;color:#ef4444;" bindtap="onLogout"><text style="margin-right:16rpx;font-size:30rpx;">🚪</text>退出登录</view>
     </view>
@@ -66,7 +65,7 @@
           </view>
           <text style="font-size:20rpx;color:#bbb;margin-top:6rpx;padding:0 8rpx;display:block;{{item.role==='user'?'text-align:right;':''}}">{{item.time}}</text>
           <!-- 评分 -->
-          <view style="display:flex;align-items:center;gap:12rpx;margin-top:8rpx;padding:0 8rpx;" wx:if="{{item.role === 'bot' && !item.rated && item.text.length > 5}}">
+          <view style="display:flex;align-items:center;gap:12rpx;margin-top:8rpx;padding:0 8rpx;" wx:if="{{item.role === 'bot' && item.answerId && !item.rated && item.text.length > 5}}">
             <text style="font-size:22rpx;color:#bbb;">有帮助吗？</text>
             <view style="display:flex;gap:8rpx;">
               <view style="width:48rpx;height:48rpx;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:28rpx;background:#f0f0f0;" catchtap="onFeedback" data-idx="{{index}}" data-score="1">👍</view>

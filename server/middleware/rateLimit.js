@@ -111,6 +111,6 @@ setInterval(() => {
             memoryStore.delete(key);
         }
     }
-}, 60000);
+}, 60000).unref();
 
 module.exports = { rateLimit, limiters };

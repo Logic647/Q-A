@@ -7,11 +7,17 @@ const app = express();
 // 加载 .env 文件到 process.env
 try {
     const envContent = fs.readFileSync(path.join(__dirname, '.env'), 'utf8');
-    envContent.split('\n').forEach(line => {
+    envContent.split(/\r?\n/).forEach(line => {
         const match = line.match(/^([^#=]+)=(.*)$/);
         if (match) process.env[match[1].trim()] = match[2].trim();
     });
 } catch (e) {}
+
+for (const name of ['ADMIN_KEY', 'ADMIN_USERNAME', 'ADMIN_PASSWORD']) {
+    if (!process.env[name]) {
+        throw new Error(`缺少必填环境变量: ${name}`);
+    }
+}
 
 // 导入中间件
 const { limiters } = require('./middleware/rateLimit');
@@ -56,7 +62,9 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public/admin.
 app.get('/admin/', (req, res) => res.sendFile(path.join(__dirname, 'public/admin.html')));
 
 // Admin 认证中间件: 检查 X-Admin-Key 请求头
-const ADMIN_KEY = process.env.ADMIN_KEY || 'REDACTED-ADMIN-KEY';
+const ADMIN_KEY = process.env.ADMIN_KEY;
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 function adminAuth(req, res, next) {
     const key = req.headers['x-admin-key'];
     if (key !== ADMIN_KEY) {
@@ -68,7 +76,7 @@ function adminAuth(req, res, next) {
 // Admin 登录接口（不需要认证）
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body;
-    if (username === 'admin' && password === 'REDACTED-ADMIN-PASSWORD') {
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
         res.json({ code: 0, token: ADMIN_KEY, msg: '登录成功' });
     } else {
         res.json({ code: -1, msg: '用户名或密码错误' });
@@ -122,8 +130,27 @@ async function initVectorIndex() {
     }
 }
 
-const PORT = 3000;
-app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`服务器已启动: http://0.0.0.0:${PORT}`);
-    await initVectorIndex();
-});
+async function start() {
+    const PORT = process.env.PORT || 3000;
+    return new Promise((resolve, reject) => {
+        const server = app.listen(PORT, '0.0.0.0', async () => {
+            console.log(`服务器已启动: http://0.0.0.0:${PORT}`);
+            try {
+                await initVectorIndex();
+                resolve(server);
+            } catch (e) {
+                reject(e);
+            }
+        });
+        server.on('error', reject);
+    });
+}
+
+if (require.main === module) {
+    start().catch(e => {
+        console.error('服务器启动失败:', e);
+        process.exitCode = 1;
+    });
+}
+
+module.exports = { app, start };

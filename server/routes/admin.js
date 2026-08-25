@@ -21,12 +21,17 @@ async function autoVectorize(kbId, questionText, answerText, category) {
 router.get('/stats', async (req, res) => {
     try {
         const pool = await getPool();
-        const [pendingReview, kb, lowScore] = await Promise.all([
+        const [questionStats, pendingReview, kb, lowScore] = await Promise.all([
+            pool.request().query('SELECT COUNT(*) AS total, IFNULL(SUM(CASE WHEN status=0 THEN 1 ELSE 0 END), 0) AS pending FROM question'),
             pool.request().query('SELECT IFNULL(COUNT(*), 0) AS count FROM answer WHERE review_status = 0'),
             pool.request().query("SELECT COUNT(*) AS total, IFNULL(SUM(CASE WHEN source='审核入库' THEN 1 ELSE 0 END), 0) AS from_review FROM knowledge_base"),
             pool.request().query('SELECT IFNULL(COUNT(*), 0) AS count FROM feedback WHERE score <= 2')
         ]);
         res.json({ code: 0, data: {
+            questions: {
+                total: Number(questionStats.recordset[0].total),
+                pending: Number(questionStats.recordset[0].pending)
+            },
             pending_review: Number(pendingReview.recordset[0].count),
             knowledge_base: { total: Number(kb.recordset[0].total), from_review: Number(kb.recordset[0].from_review) },
             low_score_count: Number(lowScore.recordset[0].count)
@@ -154,12 +159,13 @@ router.post('/review', async (req, res) => {
             .input('status', sql.TinyInt, status)
             .query('UPDATE answer SET review_status = @status WHERE answer_id = @aid');
 
+        const ans = await pool.request()
+            .input('aid', sql.Int, answer_id)
+            .query(`SELECT a.answer_text, a.question_id, q.question_text, q.category
+                    FROM answer a INNER JOIN question q ON a.question_id = q.question_id
+                    WHERE a.answer_id = @aid`);
+
         if (action === 1) {
-            const ans = await pool.request()
-                .input('aid', sql.Int, answer_id)
-                .query(`SELECT a.answer_text, a.question_id, q.question_text, q.category
-                        FROM answer a INNER JOIN question q ON a.question_id = q.question_id
-                        WHERE a.answer_id = @aid`);
             if (ans.recordset.length > 0) {
                 const row = ans.recordset[0];
                 questionText = row.question_text;
@@ -184,8 +190,13 @@ router.post('/review', async (req, res) => {
                 }
                 await pool.request()
                     .input('qid', sql.Int, row.question_id)
-                    .query('UPDATE question SET status = 1 WHERE question_id = @qid');
+                .query('UPDATE question SET status = 1 WHERE question_id = @qid');
             }
+        }
+        if (action !== 1 && ans.recordset.length > 0) {
+            await pool.request()
+                .input('qid', sql.Int, ans.recordset[0].question_id)
+                .query('UPDATE question SET status = 0 WHERE question_id = @qid');
         }
         await clearQACache(questionText);
         res.json({ code: 0, msg: action === 1 ? '审核通过并入库' : '已拒绝' });
@@ -446,6 +457,12 @@ router.post('/review/batch', async (req, res) => {
             }
         } else {
             rejected = answer_ids.length;
+            const qReq = pool.request();
+            answer_ids.forEach((id, i) => qReq.input(`id${i}`, sql.Int, id));
+            await qReq.query(`UPDATE question SET status = 0
+                    WHERE question_id IN (
+                        SELECT question_id FROM answer WHERE answer_id IN (${placeholders})
+                    )`);
         }
 
         await clearQACache();

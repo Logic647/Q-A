@@ -2,7 +2,7 @@ const https = require('https');
 const http = require('http');
 
 const LLM_API_URL = 'https://api.xiaomimimo.com/v1/chat/completions';
-const LLM_API_KEY = 'REDACTED-LLM-API-KEY';
+const LLM_API_KEY = process.env.LLM_API_KEY || '';
 const LLM_MODEL = 'mimo-v2.5';
 
 // 从推理内容中提取纯回答（去掉思考过程）
@@ -51,6 +51,8 @@ const SYSTEM_PROMPT = `你是"无锡学院新生助手"，专门帮助大学新�
 
 // 单次 LLM 调用
 function callLLM(body) {
+    if (!LLM_API_KEY) return Promise.resolve('');
+
     return new Promise((resolve) => {
         const url = new URL(LLM_API_URL);
         const options = {

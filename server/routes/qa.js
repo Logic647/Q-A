@@ -8,6 +8,11 @@ const { clearQACache } = require('../utils');
 
 const CACHE_TTL = 3600;
 
+async function getLastInsertId(pool) {
+    const result = await pool.request().query('SELECT LAST_INSERT_ID() AS id');
+    return Number(result.recordset[0]?.id || 0);
+}
+
 // ============ RAG 问答核心 ============
 router.post('/ask', async (req, res) => {
     try {
@@ -143,33 +148,80 @@ router.post('/ask', async (req, res) => {
         const fallbackKeywords = ['还没有被收录', '后续会逐步解答', '后续会有更详细', '已经被记录', '已经记下', '暂时没有明确', '暂时无法回答', '记下来啦', '记下啦'];
         const isUn收录 = fallbackKeywords.some(kw => answer.includes(kw));
 
-        // 6. 未收录时记录待回答；有实质回答时自动入库
+        let questionId = 0;
+        let answerId = 0;
+
+        // 6. 持久化问答记录：未收录进入待回答队列，已回答进入历史和反馈链路
+        try {
+            const pool = await getPool();
+            if (isUn收录) {
+                const dup = await pool.request()
+                    .input('qt', sql.NVarChar, qClean)
+                    .query(`SELECT question_id FROM question
+                            WHERE question_text LIKE CONCAT('%', @qt, '%')
+                            OR CONCAT('%', @qt, '%') LIKE question_text LIMIT 1`);
+                questionId = Number(dup.recordset[0]?.question_id || 0);
+
+                if (!questionId) {
+                    await pool.request()
+                        .input('uid', sql.Int, user_id || null)
+                        .input('qt', sql.NVarChar, question_text)
+                        .query(`INSERT INTO question (user_id, question_text, category, status)
+                                VALUES (@uid, @qt, '未分类', 0)`);
+                    questionId = await getLastInsertId(pool);
+                }
+            } else {
+                const dup = await pool.request()
+                    .input('original', sql.NVarChar, question_text)
+                    .input('qt', sql.NVarChar, qClean)
+                    .query(`SELECT question_id FROM question
+                            WHERE question_text = @original
+                            OR question_text LIKE CONCAT('%', @qt, '%') LIMIT 1`);
+                questionId = Number(dup.recordset[0]?.question_id || 0);
+
+                if (!questionId) {
+                    await pool.request()
+                        .input('uid', sql.Int, user_id || null)
+                        .input('qt', sql.NVarChar, question_text)
+                        .query(`INSERT INTO question (user_id, question_text, category, status)
+                                VALUES (@uid, @qt, 'RAG', 1)`);
+                    questionId = await getLastInsertId(pool);
+                } else {
+                    await pool.request()
+                        .input('qid', sql.Int, questionId)
+                        .query('UPDATE question SET status = 1 WHERE question_id = @qid AND status = 0');
+                }
+            }
+
+            if (questionId && !isUn收录) {
+                const duplicateAnswer = await pool.request()
+                    .input('qid', sql.Int, questionId)
+                    .input('ans', sql.NVarChar, answer)
+                    .query(`SELECT TOP 1 answer_id FROM answer
+                            WHERE question_id = @qid AND answer_text = @ans
+                            AND source = 1 AND review_status = 1
+                            ORDER BY answer_id DESC`);
+                answerId = Number(duplicateAnswer.recordset[0]?.answer_id || 0);
+
+                if (!answerId) {
+                    await pool.request()
+                        .input('qid', sql.Int, questionId)
+                        .input('ans', sql.NVarChar, answer)
+                        .query(`INSERT INTO answer (question_id, responder_id, answer_text, source, review_status)
+                                VALUES (@qid, NULL, @ans, 1, 1)`);
+                    answerId = await getLastInsertId(pool);
+                }
+            }
+        } catch (e) {
+            console.log('[QA] 保存问答记录失败:', e.message);
+        }
+
+        // 未收录时保持问题可见；有实质回答时自动入库
         if (isUn收录) {
             try {
                 const pool = await getPool();
-                const req = pool.request();
-                // 去重
-                req.input('qt', sql.NVarChar, qClean);
-                const dup = await req.query(`SELECT question_id FROM question
-                            WHERE question_text LIKE CONCAT('%', @qt, '%') OR CONCAT('%', @qt, '%') LIKE question_text LIMIT 1`);
-                if (dup.recordset.length === 0) {
-                    // 插入问题
-                    const insReq = pool.request();
-                    insReq.input('uid', sql.Int, user_id || 0);
-                    insReq.input('qt', sql.NVarChar, question_text);
-                    await insReq.query(`INSERT INTO question (user_id, question_text, category, status)
-                                VALUES (@uid, @qt, '未分类', 0)`);
-                    // 获取 question_id
-                    const idReq = pool.request();
-                    idReq.input('qt', sql.NVarChar, question_text);
-                    const idResult = await idReq.query('SELECT TOP 1 question_id FROM question WHERE question_text = @qt ORDER BY question_id DESC');
-                    const questionId = idResult.recordset[0]?.question_id;
-                    if (questionId) {
-                        // 只记录问题，不创建 answer（等待学生提交真实回答）
-                        console.log('[QA] 未收录问题已记录 question_id:', questionId);
-                    } else {
-                        console.log('[QA] question_id not found after insert');
-                    }
+                if (questionId) {
+                    console.log('[QA] 未收录问题已记录 question_id:', questionId);
                 }
             } catch (e) { console.log('[QA] 记录待回答失败:', e.message); }
         } else if (knowledge.length > 0) {
@@ -194,7 +246,8 @@ router.post('/ask', async (req, res) => {
         }
 
         const result = {
-            question_id: Date.now(),
+            question_id: questionId || Date.now(),
+            answer_id: answerId,
             channel: isUn收录 ? 2 : 1,
             answer,
             category: isUn收录 ? 'AI回答' : '知识库',
@@ -248,6 +301,18 @@ router.post('/feedback', async (req, res) => {
                 .input('score', sql.Int, score || 3)
                 .input('comment', sql.NVarChar, comment || '')
                 .query('INSERT INTO feedback (answer_id, user_id, score, comment) VALUES (@aid, @uid, @score, @comment)');
+        }
+
+        const avgResult = await pool.request()
+            .input('aid', sql.Int, answer_id)
+            .query('SELECT AVG(score) AS avg_score, COUNT(*) AS score_count FROM feedback WHERE answer_id = @aid');
+        if (avgResult.recordset.length > 0) {
+            const { avg_score, score_count } = avgResult.recordset[0];
+            await pool.request()
+                .input('aid', sql.Int, answer_id)
+                .input('avg', sql.Decimal(5, 2), avg_score || 0)
+                .input('cnt', sql.Int, score_count)
+                .query('UPDATE answer SET avg_score = @avg, score_count = @cnt WHERE answer_id = @aid');
         }
 
         res.json({ code: 0, msg: '感谢您的反馈！' });
@@ -336,36 +401,6 @@ router.post('/answer', async (req, res) => {
             .input('qid', sql.Int, question_id)
             .query('UPDATE question SET status = 1 WHERE question_id = @qid');
         res.json({ code: 0, msg: '回答已提交，等待审核' });
-    } catch (err) {
-        res.status(500).json({ code: -1, msg: err.message });
-    }
-});
-
-router.post('/feedback', async (req, res) => {
-    try {
-        const { answer_id, user_id, score, comment } = req.body;
-        if (!answer_id || !score) return res.json({ code: -1, msg: '缺少必要参数' });
-        const pool = await getPool();
-        await pool.request()
-            .input('aid', sql.Int, answer_id)
-            .input('uid', sql.Int, user_id || 0)
-            .input('score', sql.TinyInt, score)
-            .input('cmt', sql.NVarChar, comment || '')
-            .query(`INSERT INTO feedback (answer_id, user_id, score, comment)
-                    VALUES (@aid, @uid, @score, @cmt)`);
-        const avgResult = await pool.request()
-            .input('aid', sql.Int, answer_id)
-            .query(`SELECT AVG(CAST(score AS FLOAT)) AS avg_score, COUNT(*) AS score_count
-                    FROM feedback WHERE answer_id = @aid`);
-        if (avgResult.recordset.length > 0) {
-            const { avg_score, score_count } = avgResult.recordset[0];
-            await pool.request()
-                .input('aid', sql.Int, answer_id)
-                .input('avg', sql.Decimal(5, 2), avg_score || 0)
-                .input('cnt', sql.Int, score_count)
-                .query('UPDATE answer SET avg_score = @avg, score_count = @cnt WHERE answer_id = @aid');
-        }
-        res.json({ code: 0, msg: '评价成功' });
     } catch (err) {
         res.status(500).json({ code: -1, msg: err.message });
     }
