@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node --test test/api.test.js test/db.test.js test/env.test.js test/rateLimit.test.js",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop qa-server",
     "pm2:restart": "pm2 restart qa-server",
