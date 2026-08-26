@@ -10,6 +10,7 @@
   --bg:#f7f8fa;--card:#fff;--border:#e8eaed;--text:#1f2937;--muted:#6b7280;--light:#9ca3af;
   --primary:#7c3aed;--primary-hover:#6d28d9;--primary-bg:#f5f3ff;--primary-border:#c4b5fd;
   --success:#059669;--success-bg:#ecfdf5;--success-border:#a7f3d0;
+  --info:#0284c7;--info-bg:#e0f2fe;
   --danger:#dc2626;--danger-bg:#fef2f2;--danger-border:#fecaca;
   --warning:#d97706;--warning-bg:#fffbeb;--warning-border:#fde68a;
   --radius:10px;--radius-lg:14px;
@@ -65,6 +66,7 @@ body{font-family:'SF Pro Text','Segoe UI','PingFang SC','Hiragino Sans GB','Micr
 .stat:hover{box-shadow:var(--shadow-md)}
 .stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px}
 .stat-icon.purple{background:var(--primary-bg);color:var(--primary)}
+.stat-icon.blue{background:var(--info-bg);color:var(--info)}
 .stat-icon.green{background:var(--success-bg);color:var(--success)}
 .stat-icon.orange{background:var(--warning-bg);color:var(--warning)}
 .stat-icon.red{background:var(--danger-bg);color:var(--danger)}
@@ -178,6 +180,7 @@ tr:hover td{background:rgba(124,58,237,0.02)}
       <div class="nav-section">内容管理</div>
       <div class="nav-btn" data-tab="kb" onclick="go('kb')"><span class="icon">📚</span><span>知识库</span></div>
       <div class="nav-btn" data-tab="review" onclick="go('review')"><span class="icon">✅</span><span>待审核</span><span class="badge" id="badgeReview" style="display:none">0</span></div>
+      <div class="nav-btn" data-tab="verify" onclick="go('verify')"><span class="icon">🪪</span><span>身份审核</span><span class="badge" id="badgeVerify" style="display:none">0</span></div>
       <div class="nav-btn" data-tab="pending" onclick="go('pending')"><span class="icon">❓</span><span>待回答</span><span class="badge" id="badgePending" style="display:none">0</span></div>
       <div class="nav-section">系统</div>
       <div class="nav-btn" data-tab="users" onclick="go('users')"><span class="icon">👤</span><span>用户管理</span></div>
@@ -209,6 +212,19 @@ tr:hover td{background:rgba(124,58,237,0.02)}
     <section id="p-review" class="hidden">
       <div class="page-head"><h2>待审核</h2><p>审核学生提交的回答内容</p></div>
       <div class="card"><div class="card-body"><table><thead><tr><th>问题</th><th>回答</th><th>提交者</th><th>操作</th></tr></thead><tbody id="reviewBody"></tbody></table></div></div>
+    </section>
+
+    <!-- 身份认证审核 -->
+    <section id="p-verify" class="hidden">
+      <div class="page-head"><h2>身份认证审核</h2><p>审核学生上传的证件与身份信息</p></div>
+      <div class="card">
+        <div class="card-body">
+          <table>
+            <thead><tr><th style="width:64px">证件</th><th>姓名</th><th>学号</th><th>微信昵称</th><th>提交时间</th><th style="width:150px">操作</th></tr></thead>
+            <tbody id="verifyBody"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- 待回答 -->
@@ -321,22 +337,26 @@ async function load(t){
   if(t==='overview')await loadOverview();
   else if(t==='kb')await loadKB();
   else if(t==='review')await loadReview();
+  else if(t==='verify')await loadVerify();
   else if(t==='pending')await loadPending();
   else if(t==='users')await loadUsers();
 }
 
 // ===== 概览 =====
 async function loadOverview(){
-  const [s,p] = await Promise.all([api('/admin/stats'),api('/admin/pending-questions')]);
+  const [s,p,v] = await Promise.all([api('/admin/stats'),api('/admin/pending-questions'),api('/admin/verify/pending')]);
   if(s.code!==0)return;
   const d=s.data,pc=p.code===0&&p.data?p.data.length:0;
+  const vc=v.code===0&&v.data?v.data.length:0;
   // 更新徽章
   if(d.pending_review>0){$('badgeReview').style.display='';$('badgeReview').textContent=d.pending_review}else $('badgeReview').style.display='none';
   if(pc>0){$('badgePending').style.display='';$('badgePending').textContent=pc}else $('badgePending').style.display='none';
+  if(vc>0){$('badgeVerify').style.display='';$('badgeVerify').textContent=vc}else $('badgeVerify').style.display='none';
 
   $('statGrid').innerHTML=`
     <div class="stat"><div class="stat-icon orange">⏳</div><div class="stat-num">${d.pending_review||0}</div><div class="stat-label">待审核回答</div></div>
     <div class="stat"><div class="stat-icon purple">❓</div><div class="stat-num">${pc}</div><div class="stat-label">待回答问题</div></div>
+    <div class="stat"><div class="stat-icon blue">🪪</div><div class="stat-num">${vc}</div><div class="stat-label">待认证用户</div></div>
     <div class="stat"><div class="stat-icon green">📚</div><div class="stat-num">${d.knowledge_base?.total||0}</div><div class="stat-label">知识库条目</div></div>
     <div class="stat"><div class="stat-icon red">⬇️</div><div class="stat-num">${d.low_score_count||0}</div><div class="stat-label">低分回答</div></div>
   `;
@@ -381,6 +401,41 @@ async function loadReview(){
   </tr>`).join('');
 }
 async function reviewAns(id,act){await api('/admin/review','POST',{answer_id:id,reviewer_id:1,action:act});toast(act===1?'已通过':'已拒绝');loadReview();loadOverview()}
+
+// ===== 身份认证审核 =====
+let verifyRows=[];
+async function loadVerify(){
+  const r=await api('/admin/verify/pending');if(r.code!==0)return;
+  verifyRows=r.data||[];
+  const b=$('verifyBody');
+  if(!r.data||!r.data.length){b.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">🪪</div><div class="empty-text">没有待审核的身份认证</div></div></td></tr>';return}
+  b.innerHTML=r.data.map(n=>{
+    const image=n.image_url?`<img src="${esc(n.image_url)}" alt="证件照片" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="previewVerify(${n.verify_id})">`:'<span class="cell-tag tag-gray">未上传</span>';
+    return `<tr>
+      <td>${image}</td>
+      <td><div class="cell-main">${esc(n.real_name||'-')}</div></td>
+      <td>${esc(n.student_id||'-')}</td>
+      <td>${esc(n.nickname||'-')}</td>
+      <td style="color:var(--muted);font-size:12px">${fmt(n.created_at)}</td>
+      <td style="white-space:nowrap"><button class="btn btn-s btn-sm" onclick="reviewVerify(${n.verify_id},${n.user_id},1)">通过</button> <button class="btn btn-d btn-sm" onclick="reviewVerify(${n.verify_id},${n.user_id},2)">拒绝</button></td>
+    </tr>`;
+  }).join('');
+}
+async function reviewVerify(id,uid,act){
+  let remark='';
+  if(act===2){
+    const input=prompt('请输入拒绝原因（可留空）');
+    if(input===null)return;
+    remark=input.trim();
+  }
+  await api('/admin/verify/review','POST',{verify_id:id,user_id:uid,action:act,remark});
+  toast(act===1?'认证已通过':'认证已拒绝');loadVerify();loadUsers();loadOverview();
+}
+function previewImage(src){window.open(src,'_blank')}
+function previewVerify(id){
+  const row=verifyRows.find(n=>n.verify_id===id);
+  if(row?.image_url)window.open(row.image_url,'_blank');
+}
 
 // ===== 待回答 =====
 async function loadPending(){

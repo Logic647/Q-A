@@ -27,10 +27,21 @@ const { requestTimeout, slowRequestLogger } = require('./middleware/timeout');
 // CORS: 仅允许小程序和管理后台
 const ALLOWED_ORIGINS = [
     'https://servicewechat.com',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://logic-yjb.top'
+    'https://logic-yjb.top',
+    'https://www.logic-yjb.top'
 ];
+
+function isAllowedOrigin(origin) {
+    if (ALLOWED_ORIGINS.includes(origin)) return true;
+    try {
+        const url = new URL(origin);
+        return ['http:', 'https:'].includes(url.protocol)
+            && ['localhost', '127.0.0.1'].includes(url.hostname);
+    } catch (e) {
+        return false;
+    }
+}
+
 app.use(cors({
     origin: (origin, callback) => {
         // 允许无 origin 的请求（如小程序、curl、服务器端调用）
@@ -38,7 +49,7 @@ app.use(cors({
             return callback(null, true);
         }
         // 检查白名单
-        if (ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
+        if (isAllowedOrigin(origin)) {
             callback(null, true);
         } else {
             console.log('[CORS] 拒绝跨域请求:', origin);
