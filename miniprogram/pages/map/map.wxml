@@ -9,7 +9,7 @@
     <view class="map-body" bindtap="onPreview">
       <image class="map-img" src="{{mapUrl}}" mode="aspectFit" show-menu-by-longpress />
       <view class="zoom-hint">
-        <text class="zoom-icon">👆</text>
+        <text class="zoom-icon">放</text>
         <text class="zoom-text">点击查看大图（支持缩放）</text>
       </view>
     </view>

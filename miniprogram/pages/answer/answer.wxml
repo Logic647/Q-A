@@ -10,7 +10,7 @@
 
   <scroll-view class="content" scroll-y>
     <view class="empty-state" wx:if="{{pendingList.length === 0 && !loading}}">
-      <text class="empty-icon">📭</text>
+      <view class="empty-icon">空</view>
       <text class="empty-text">暂无待回答问题</text>
       <text class="empty-sub">新问题会在聊天中被自动收录</text>
     </view>
@@ -24,7 +24,7 @@
       <text class="q-text">{{item.question_text}}</text>
       <view class="q-bottom">
         <text class="q-asker">来自：{{item.asker_name || '匿名新生'}}</text>
-        <text class="q-action">去回答 →</text>
+        <text class="q-action">去回答</text>
       </view>
     </view>
   </scroll-view>

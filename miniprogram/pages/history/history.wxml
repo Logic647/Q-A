@@ -7,7 +7,7 @@
 
   <scroll-view class="content" scroll-y>
     <view class="empty-state" wx:if="{{history.length === 0}}">
-      <text class="empty-icon">📭</text>
+      <view class="empty-icon">空</view>
       <text class="empty-text">暂无提问记录</text>
     </view>
 

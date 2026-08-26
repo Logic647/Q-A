@@ -8,14 +8,14 @@
   <scroll-view class="content" scroll-y>
     <!-- 已认证 -->
     <view class="status-card done" wx:if="{{authStatus === 1}}">
-      <view class="status-icon">✅</view>
+      <view class="status-icon success">通</view>
       <text class="status-text">认证已通过</text>
       <text class="status-sub">你已获得回答问题的权限</text>
     </view>
 
     <!-- 待审核 -->
     <view class="status-card pending" wx:elif="{{verifyStatus === 0}}">
-      <view class="status-icon">⏳</view>
+      <view class="status-icon warning">审</view>
       <text class="status-text">审核中</text>
       <text class="status-sub">认证申请已提交，管理员正在审核</text>
     </view>
@@ -40,7 +40,7 @@
         <view class="upload-area" bindtap="chooseImage">
           <image wx:if="{{imageUrl}}" class="upload-preview" src="{{imageUrl}}" mode="aspectFill" />
           <view wx:else class="upload-placeholder">
-            <text class="upload-icon">📷</text>
+            <text class="upload-icon">+</text>
             <text class="upload-text">点击上传校园卡或学生证</text>
           </view>
         </view>
