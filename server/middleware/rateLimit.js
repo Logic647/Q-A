@@ -18,6 +18,7 @@ const memoryStore = new Map();
  */
 function rateLimit(options = {}) {
     const {
+        prefix = 'api',
         windowMs = 60 * 1000, // 默认1分钟
         max = 60, // 默认60次
         message = '请求过于频繁，请稍后再试',
@@ -25,7 +26,7 @@ function rateLimit(options = {}) {
     } = options;
 
     return async (req, res, next) => {
-        const key = `ratelimit:${keyGenerator(req)}`;
+        const key = `ratelimit:${prefix}:${keyGenerator(req)}`;
         
         try {
             // 尝试使用Redis
@@ -79,10 +80,11 @@ function rateLimit(options = {}) {
 // 预设的限制策略
 const limiters = {
     // 通用API限制：每分钟60次
-    api: rateLimit({ windowMs: 60000, max: 60 }),
+    api: rateLimit({ prefix: 'api', windowMs: 60000, max: 60 }),
     
     // 登录接口限制：每分钟5次
     login: rateLimit({
+        prefix: 'login',
         windowMs: 60000,
         max: 5,
         message: '登录尝试过多，请1分钟后再试'
@@ -90,6 +92,7 @@ const limiters = {
     
     // 问答接口限制：每分钟30次
     qa: rateLimit({
+        prefix: 'qa',
         windowMs: 60000,
         max: 30,
         message: '提问过于频繁，请稍后再试'
@@ -97,6 +100,7 @@ const limiters = {
     
     // 严格限制：每小时10次
     strict: rateLimit({
+        prefix: 'strict',
         windowMs: 3600000,
         max: 10,
         message: '操作过于频繁，请1小时后再试'
