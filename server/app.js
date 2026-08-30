@@ -4,12 +4,14 @@ const path = require('path');
 const fs = require('fs');
 const app = express();
 
-// 加载 .env 文件到 process.env
+// 加载 .env 文件到 process.env（不覆盖已存在的环境变量，便于测试和 CI 注入）
 try {
     const envContent = fs.readFileSync(path.join(__dirname, '.env'), 'utf8');
     envContent.split(/\r?\n/).forEach(line => {
         const match = line.match(/^([^#=]+)=(.*)$/);
-        if (match) process.env[match[1].trim()] = match[2].trim();
+        if (match && process.env[match[1].trim()] === undefined) {
+            process.env[match[1].trim()] = match[2].trim();
+        }
     });
 } catch (e) {}
 

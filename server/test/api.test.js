@@ -6,6 +6,11 @@ const http = require('http');
 const moduleRoot = path.join(__dirname, '..');
 const resolved = name => require.resolve(path.join(moduleRoot, name));
 
+// 测试凭据自供，不依赖开发者本地 .env（app.js 的 .env 加载器不会覆盖已有环境变量）
+process.env.ADMIN_KEY = 'test-admin-key';
+process.env.ADMIN_USERNAME = 'admin';
+process.env.ADMIN_PASSWORD = 'test-admin-pass';
+
 const dbQueries = [];
 let generatedDbId = 100;
 const requestStub = () => ({
@@ -128,7 +133,7 @@ test('admin login returns a token only for valid credentials', async () => {
     const bad = await call('POST', '/api/admin/login', { username: 'admin', password: 'wrong' });
     assert.equal(bad.body.code, -1);
 
-    const good = await call('POST', '/api/admin/login', { username: 'admin', password: 'REDACTED-ADMIN-PASSWORD' });
+    const good = await call('POST', '/api/admin/login', { username: 'admin', password: 'test-admin-pass' });
     assert.equal(good.body.code, 0);
     assert.ok(good.body.token);
     adminToken = good.body.token;
