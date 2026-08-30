@@ -11,7 +11,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(17, 24, 39, 0.48);
+  background: var(--mask);
 }
 
 .sheet {
@@ -24,8 +24,8 @@
   flex-direction: column;
   height: 64vh;
   background: var(--surface);
-  border-radius: 16rpx 16rpx 0 0;
-  box-shadow: 0 -8rpx 28rpx rgba(17, 24, 39, 0.14);
+  border-radius: 28rpx 28rpx 0 0;
+  box-shadow: 0 -8rpx 28rpx rgba(15, 42, 40, 0.14);
 }
 
 .drag-handle {
@@ -37,8 +37,8 @@
 .drag-bar {
   width: 62rpx;
   height: 7rpx;
-  border-radius: 999rpx;
-  background: #d6dcdf;
+  border-radius: var(--radius-pill);
+  background: var(--line);
 }
 
 .sheet-header {
@@ -84,8 +84,8 @@
   width: 100%;
   flex: 1;
   min-height: 0;
-  border-radius: 12rpx;
-  background: #e9edef;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
 }
 
 .zoom-hint {

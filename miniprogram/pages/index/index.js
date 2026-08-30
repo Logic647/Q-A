@@ -1,11 +1,13 @@
 const app = getApp();
 let msgId = 0;
+const STATUS_STEPS = ['正在检索知识库', '正在理解问题', '正在生成回答'];
 
 Page({
     data: {
         messages: [],
         inputValue: '',
         loading: false,
+        statusText: STATUS_STEPS[0],
         scrollToId: '',
         userInfo: null,
         showMenu: false,
@@ -32,13 +34,6 @@ Page({
             this.switchToConv(this.data.conversations[0].id);
         } else {
             this._createNewConv();
-        }
-    },
-
-    onShow() {
-        if (this.data.currentConversationId) {
-            const msgs = this._loadMessages(this.data.currentConversationId);
-            this.setData({ messages: msgs });
         }
     },
 
@@ -145,9 +140,48 @@ Page({
 
     toggleMenu() { this.setData({ showMenu: !this.data.showMenu }); },
     closeMenu() { this.setData({ showMenu: false }); },
-    openMap() {
-        const mapUrl = app.globalData.baseUrl.replace('/api', '') + '/public/campus_map.jpg';
-        wx.previewImage({ urls: [mapUrl], current: mapUrl });
+    openMap() { wx.navigateTo({ url: '/pages/map/map' }); },
+    goToHistory() { this.setData({ showMenu: false }); wx.navigateTo({ url: '/pages/history/history' }); },
+
+    _startStatusTimer() {
+        this._stopStatusTimer();
+        let step = 0;
+        this.setData({ statusText: STATUS_STEPS[0] });
+        this._statusTimer = setInterval(() => {
+            step = (step + 1) % STATUS_STEPS.length;
+            this.setData({ statusText: STATUS_STEPS[step] });
+        }, 2800);
+    },
+
+    _stopStatusTimer() {
+        if (this._statusTimer) {
+            clearInterval(this._statusTimer);
+            this._statusTimer = null;
+        }
+    },
+
+    onUnload() { this._stopStatusTimer(); },
+
+    onHide() { this._stopStatusTimer(); },
+
+    onShow() {
+        if (this.data.currentConversationId) {
+            const msgs = this._loadMessages(this.data.currentConversationId);
+            this.setData({ messages: msgs });
+        }
+        if (this.data.loading) this._startStatusTimer();
+    },
+
+    onRetry(e) {
+        const idx = e.currentTarget.dataset.idx;
+        const msgs = [...this.data.messages];
+        const userMsg = msgs[idx - 1];
+        if (!userMsg || userMsg.role !== 'user') return;
+        const text = userMsg.text;
+        msgs.splice(idx - 1, 2);
+        this.setData({ messages: msgs });
+        this._saveMessages(this.data.currentConversationId, msgs);
+        this.askQuestion(text);
     },
 
     onInput(e) { this.setData({ inputValue: e.detail.value }); },
@@ -164,6 +198,7 @@ Page({
     },
 
     async askQuestion(text) {
+        if (this.data.loading) return;
         if (!this.data.currentConversationId) {
             this._createNewConv();
         }
@@ -172,6 +207,7 @@ Page({
         const userMsg = { id: ++msgId, role: 'user', text, time: now };
         const msgs = [...this.data.messages, userMsg];
         this.setData({ messages: msgs, inputValue: '', loading: true, scrollToId: 'msg-loading' });
+        this._startStatusTimer();
 
         // 首条消息作为会话标题（此时 messages 已包含刚发送的用户消息，length === 1）
         const conv = this._findConv(this.data.currentConversationId);
@@ -187,19 +223,25 @@ Page({
         try {
             const uid = app.globalData.userInfo ? app.globalData.userInfo.user_id : 0;
             const res = await app.request('/qa/ask', 'POST', { user_id: uid, question_text: text });
-            let answer = '网络异常，请稍后重试。';
+            let answer = '';
             let answerId = 0;
+            let failed = false;
             if (res.code === 0 && res.data && res.data.answer) {
                 answer = res.data.answer.replace(/\\n/g, '\n');
                 answerId = res.data.answer_id || 0;
+            } else {
+                failed = true;
+                answer = (res && res.msg) || '这次没能生成回答，请稍后重试。';
             }
-            const botMsg = { id: ++msgId, role: 'bot', text: answer, answerId, time: this._fmtTime() };
+            this._stopStatusTimer();
+            const botMsg = { id: ++msgId, role: 'bot', text: answer, answerId, failed, time: this._fmtTime() };
             const finalMsgs = [...this.data.messages, botMsg];
             this.setData({ messages: finalMsgs, loading: false, scrollToId: 'msg-bottom' });
             this._saveMessages(this.data.currentConversationId, finalMsgs);
             this._touchConv(this.data.currentConversationId);
         } catch (e) {
-            const botMsg = { id: ++msgId, role: 'bot', text: '网络异常，请稍后重试。', time: this._fmtTime() };
+            this._stopStatusTimer();
+            const botMsg = { id: ++msgId, role: 'bot', text: '网络异常，请检查网络后重试。', failed: true, time: this._fmtTime() };
             const finalMsgs = [...this.data.messages, botMsg];
             this.setData({ messages: finalMsgs, loading: false, scrollToId: 'msg-bottom' });
             this._saveMessages(this.data.currentConversationId, finalMsgs);

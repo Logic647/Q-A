@@ -46,6 +46,10 @@
         <view class="menu-badge primary">认</view>
         <text>身份认证</text>
       </view>
+      <view class="menu-item" bindtap="goToHistory">
+        <view class="menu-badge neutral">记</view>
+        <text>提问记录</text>
+      </view>
       <view class="menu-item" bindtap="clearAllHistory">
         <view class="menu-badge neutral">清</view>
         <text>清空历史</text>
@@ -62,7 +66,7 @@
       <view class="icon-button" bindtap="toggleMenu">☰</view>
       <view class="topbar-copy">
         <text class="topbar-title">冰冰快答</text>
-        <text class="topbar-subtitle">{{loading ? '正在思考' : '随时提问'}}</text>
+        <text class="topbar-subtitle">{{loading ? statusText : '随时提问'}}</text>
       </view>
     </view>
 
@@ -86,6 +90,7 @@
           <view class="message-bubble {{item.role}}">
             <text user-select>{{item.text}}</text>
           </view>
+          <view class="retry-chip" wx:if="{{item.failed}}" catchtap="onRetry" data-idx="{{index}}">重新提问</view>
           <text class="message-time">{{item.time}}</text>
           <view class="feedback-bar" wx:if="{{item.role === 'bot' && item.answerId && !item.rated && item.text.length > 5}}">
             <text class="feedback-label">有帮助吗？</text>
@@ -99,9 +104,12 @@
         <view class="message-avatar bot">冰</view>
         <view class="message-content">
           <view class="message-bubble bot loading-bubble">
-            <view class="dot"></view>
-            <view class="dot"></view>
-            <view class="dot"></view>
+            <view class="loading-dots">
+              <view class="dot"></view>
+              <view class="dot"></view>
+              <view class="dot"></view>
+            </view>
+            <text class="loading-text">{{statusText}}</text>
           </view>
         </view>
       </view>

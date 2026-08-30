@@ -13,8 +13,8 @@
   gap: 26rpx;
   padding: 36rpx 34rpx;
   background: var(--surface);
-  border: 1rpx solid rgba(229, 234, 236, 0.9);
-  border-radius: 16rpx;
+  border: 1rpx solid var(--line);
+  border-radius: var(--radius);
   box-shadow: var(--shadow-md);
 }
 
@@ -63,8 +63,8 @@
   gap: 16rpx;
   min-width: 0;
   padding: 22rpx;
-  background: rgba(255, 255, 255, 0.82);
-  border-radius: 16rpx;
+  background: var(--surface-muted);
+  border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
 }
 
