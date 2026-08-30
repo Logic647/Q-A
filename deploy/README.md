@@ -30,7 +30,7 @@ bash deploy.sh
 ### 第四步：配置数据库
 ```bash
 # 导入表结构
-sqlcmd -S localhost -U sa -P 'REDACTED-DB-PASSWORD' -i migrate_sql.sql
+sqlcmd -S localhost -U sa -P '<DB_PASSWORD>' -i migrate_sql.sql
 
 # 导入 Neo4j 数据
 node migrate_neo4j.js
@@ -72,10 +72,10 @@ pm2 restart qa-server
 redis-cli ping
 
 # 查看 Neo4j
-cypher-shell -u neo4j -p 'REDACTED-DB-PASSWORD'
+cypher-shell -u neo4j -p '<DB_PASSWORD>'
 
 # 查看 SQL Server
-sqlcmd -S localhost -U sa -P 'REDACTED-DB-PASSWORD'
+sqlcmd -S localhost -U sa -P '<DB_PASSWORD>'
 ```
 
 ## 注意事项

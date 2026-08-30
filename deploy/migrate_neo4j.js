@@ -6,7 +6,7 @@ const neo4j = require('neo4j-driver');
 
 const NEO4J_URL = process.env.NEO4J_URL || 'bolt://localhost:7687';
 const NEO4J_USER = process.env.NEO4J_USER || 'neo4j';
-const NEO4J_PASS = process.env.NEO4J_PASS || 'REDACTED-DB-PASSWORD';
+const NEO4J_PASS = process.env.NEO4J_PASS || '';
 
 const driver = neo4j.driver(NEO4J_URL, neo4j.auth.basic(NEO4J_USER, NEO4J_PASS));
 

@@ -151,7 +151,7 @@ Content-Type: application/json
 POST /api/admin/login
 {
   "username": "admin",
-  "password": "REDACTED-ADMIN-PASSWORD"
+  "password": "<ADMIN_PASSWORD>"
 }
 
 # 知识库列表

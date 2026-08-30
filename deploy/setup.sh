@@ -45,7 +45,7 @@ curl https://packages.microsoft.com/config/ubuntu/22.04/mssql-server-2022.list |
 apt-get update -y
 ACCEPT_EULA=Y apt-get install -y mssql-server
 # 配置 SA 密码
-MSSQL_SA_PASSWORD='REDACTED-DB-PASSWORD' MSSQL_PID='evaluation' /opt/mssql/bin/mssql-conf -n setup accept-eula
+MSSQL_SA_PASSWORD='<SET_YOUR_SA_PASSWORD>' MSSQL_PID='evaluation' /opt/mssql/bin/mssql-conf -n setup accept-eula
 
 echo ""
 echo "=========================================="
