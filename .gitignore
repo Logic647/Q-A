@@ -39,3 +39,17 @@ build/
 
 # Project context (local only)
 server/.hermes.md
+
+# Local-only copies of handover docs (contain credentials)
+*-local.md
+
+# One-off debug scripts moved out of version control
+scratch/
+
+# AI tool state
+.mimocode/
+hermes-migration/
+.zcode/
+
+# Course paper (contains personal information)
+数据库课程设计.txt
