@@ -53,3 +53,6 @@ hermes-migration/
 
 # Course paper (contains personal information)
 数据库课程设计.txt
+
+# Impeccable design-review working files
+.impeccable/
