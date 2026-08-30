@@ -40,28 +40,30 @@ cd qa-server/server
 npm install
 
 # 配置环境变量
-cp .env.example .env
+cp ../.env.example .env
 # 编辑 .env 文件，填入必要的配置
 ```
 
 ### 配置
 
-创建 `.env` 文件：
+创建 `.env` 文件（变量名以 `config/db.js` 和 `app.js` 实际读取的为准）：
 
 ```env
 # MySQL
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=your_password
-MYSQL_DATABASE=FreshmanQA
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASS=your_password
+DB_NAME=FreshmanQA
 
-# Redis
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
+# Redis（当前服务默认 127.0.0.1:6379，暂未读取环境变量）
+# REDIS_HOST=127.0.0.1
+# REDIS_PORT=6379
 
-# Admin
+# Admin（三项均必填）
 ADMIN_KEY=your_admin_key
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your_admin_password
 
 # LLM API
 LLM_API_KEY=your_llm_api_key
