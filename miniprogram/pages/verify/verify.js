@@ -7,11 +7,11 @@ Page({
         realName: '',
         studentId: '',
         imageUrl: '',
-        canSubmit: false
+        canSubmit: false,
+        errors: {}
     },
 
     onLoad() { this.loadStatus(); },
-    goBack() { wx.navigateBack(); },
 
     async loadStatus() {
         const uid = app.globalData.userInfo ? app.globalData.userInfo.user_id : 0;
@@ -27,10 +27,21 @@ Page({
         } catch (e) {}
     },
 
-    onNameInput(e) { this.setData({ realName: e.detail.value }); this.checkCanSubmit(); },
-    onSidInput(e) { this.setData({ studentId: e.detail.value }); this.checkCanSubmit(); },
+    onNameInput(e) { this.setData({ realName: e.detail.value, 'errors.name': '' }); this.checkCanSubmit(); },
+    onSidInput(e) { this.setData({ studentId: e.detail.value, 'errors.sid': '' }); this.checkCanSubmit(); },
     checkCanSubmit() {
         this.setData({ canSubmit: !!(this.data.realName && this.data.studentId && this.data.imageUrl) });
+    },
+    validate() {
+        const errors = {};
+        const name = this.data.realName.trim();
+        const sid = this.data.studentId.trim();
+        if (!name) errors.name = '请输入真实姓名';
+        else if (name.length < 2 || name.length > 20) errors.name = '姓名长度需在 2-20 字之间';
+        if (!sid) errors.sid = '请输入学号';
+        else if (!/^\d{6,12}$/.test(sid)) errors.sid = '学号应为 6-12 位数字';
+        this.setData({ errors });
+        return !Object.keys(errors).length;
     },
 
     chooseImage() {
@@ -61,8 +72,8 @@ Page({
     },
 
     async onSubmit() {
+        if (!this.data.canSubmit || !this.validate()) return;
         const { realName, studentId, imageUrl } = this.data;
-        if (!realName || !studentId || !imageUrl) return;
         const uid = app.globalData.userInfo ? app.globalData.userInfo.user_id : 0;
         wx.showLoading({ title: '提交中...' });
         try {

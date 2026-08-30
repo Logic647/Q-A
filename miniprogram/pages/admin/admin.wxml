@@ -1,10 +1,4 @@
 <view class="page">
-  <view class="header">
-    <view class="header-left" bindtap="goBack"><text class="back-icon">←</text></view>
-    <view class="header-title">管理后台</view>
-    <view class="header-right"></view>
-  </view>
-
   <scroll-view class="content" scroll-y>
     <view class="tabs">
       <view class="tab {{activeTab === 0 ? 'active' : ''}}" bindtap="switchTab" data-tab="0">概览</view>
@@ -17,6 +11,15 @@
 
     <!-- 概览 -->
     <view wx:if="{{activeTab === 0}}">
+      <block wx:if="{{loading}}">
+        <view class="stats-grid">
+          <view class="stat-card" wx:for="{{[1, 2, 3, 4]}}" wx:key="*this">
+            <view class="skel skel-line w50"></view>
+            <view class="skel skel-line w80"></view>
+          </view>
+        </view>
+      </block>
+      <block wx:else>
       <view class="stats-grid">
         <view class="stat-card"><text class="stat-num">{{stats.questions.total || 0}}</text><text class="stat-label">总问题</text><text class="stat-sub">{{stats.questions.pending || 0}} 待回答</text></view>
         <view class="stat-card"><text class="stat-num">{{stats.pending_review || 0}}</text><text class="stat-label">待审回答</text><text class="stat-sub">等待管理员处理</text></view>
@@ -28,6 +31,8 @@
         <view class="qs-item"><text class="qs-num">{{pendingList.length}}</text><text class="qs-label">待审核</text></view>
         <view class="qs-item"><text class="qs-num">{{verifiedList.length}}</text><text class="qs-label">已认证</text></view>
       </view>
+      <view class="reload-tip" bindtap="loadData">数据有更新？点此刷新</view>
+      </block>
     </view>
 
     <!-- 审核 -->
@@ -36,7 +41,11 @@
         <view class="section-title">
           <text>身份认证（{{verifyList.length}}）</text>
         </view>
-        <view class="empty-tip" wx:if="{{verifyList.length === 0}}">暂无</view>
+        <view class="empty-state" wx:if="{{verifyList.length === 0}}">
+          <view class="empty-icon">审</view>
+          <text class="empty-title">没有待审核的认证</text>
+          <text class="empty-text">学生在小程序提交身份认证后会出现在这里</text>
+        </view>
         <view class="item-card" wx:for="{{verifyList}}" wx:key="verify_id">
           <view class="item-top"><text class="item-name">{{item.real_name}}</text><text class="item-id">{{item.student_id}}</text></view>
           <text class="item-sub">来自：{{item.nickname || '匿名'}} · {{item.created_at}}</text>
@@ -61,7 +70,11 @@
           <view class="batch-btn pass" bindtap="batchApprove">批量通过</view>
           <view class="batch-btn reject" bindtap="batchReject">批量拒绝</view>
         </view>
-        <view class="empty-tip" wx:if="{{pendingList.length === 0}}">暂无</view>
+        <view class="empty-state" wx:if="{{pendingList.length === 0}}">
+          <view class="empty-icon">答</view>
+          <text class="empty-title">没有待审核的回答</text>
+          <text class="empty-text">学生提交回答后会出现在这里</text>
+        </view>
         <view class="item-card {{selectedMap[item.answer_id] ? 'selected' : ''}}" wx:for="{{pendingList}}" wx:key="answer_id">
           <view class="item-check" wx:if="{{selectMode}}" bindtap="toggleSelect" data-id="{{item.answer_id}}">
             <text class="check-icon">{{selectedMap[item.answer_id] ? '✓' : ''}}</text>
@@ -83,7 +96,11 @@
     <view wx:if="{{activeTab === 2}}">
       <view class="section-card">
         <view class="section-title"><text>已认证用户（{{verifiedList.length}}）</text></view>
-        <view class="empty-tip" wx:if="{{verifiedList.length === 0}}">暂无</view>
+        <view class="empty-state" wx:if="{{verifiedList.length === 0}}">
+          <view class="empty-icon">员</view>
+          <text class="empty-title">暂无认证用户</text>
+          <text class="empty-text">通过身份审核的用户会出现在这里</text>
+        </view>
         <view class="item-card" wx:for="{{verifiedList}}" wx:key="user_id">
           <view class="item-top"><text class="item-name">{{item.nickname || '用户'}}</text><text class="item-id">{{item.student_id}}</text></view>
           <text class="item-sub">姓名：{{item.real_name}} · 认证时间：{{item.verify_time}}</text>
@@ -110,7 +127,11 @@
           <view class="batch-btn" bindtap="selectAll" data-list="{{kbList}}">全选 ({{Object.keys(selectedMap).length}}/{{kbList.length}})</view>
           <view class="batch-btn reject" bindtap="batchDeleteKB">批量删除</view>
         </view>
-        <view class="empty-tip" wx:if="{{kbList.length === 0}}">暂无</view>
+        <view class="empty-state" wx:if="{{kbList.length === 0}}">
+          <view class="empty-icon">库</view>
+          <text class="empty-title">知识库还是空的</text>
+          <text class="empty-text">点击右上角「添加」录入第一条问答</text>
+        </view>
         <view class="item-card {{selectedMap[item.kb_id] ? 'selected' : ''}}" wx:for="{{kbList}}" wx:key="kb_id">
           <view class="item-check" wx:if="{{selectMode}}" bindtap="toggleSelect" data-id="{{item.kb_id}}">
             <text class="check-icon">{{selectedMap[item.kb_id] ? '✓' : ''}}</text>
@@ -132,7 +153,11 @@
     <view wx:if="{{activeTab === 4}}">
       <view class="section-card">
         <view class="section-title"><text>低分回答（{{lowScoreList.length}}）</text></view>
-        <view class="empty-tip" wx:if="{{lowScoreList.length === 0}}">暂无</view>
+        <view class="empty-state" wx:if="{{lowScoreList.length === 0}}">
+          <view class="empty-icon">赞</view>
+          <text class="empty-title">没有低分回答</text>
+          <text class="empty-text">评分较低的回答会汇总在这里供复核</text>
+        </view>
         <view class="item-card" wx:for="{{lowScoreList}}" wx:key="answer_id">
           <view class="item-top"><text class="item-category">{{item.category}}</text><text class="item-score">评分 {{item.avg_score}}</text></view>
           <text class="item-q">Q: {{item.question_text}}</text>
@@ -157,7 +182,11 @@
           <view class="batch-btn" bindtap="selectAll" data-list="{{pendingQuestions}}">全选 ({{Object.keys(selectedMap).length}}/{{pendingQuestions.length}})</view>
           <view class="batch-btn reject" bindtap="batchDeleteQuestions">批量删除</view>
         </view>
-        <view class="empty-tip" wx:if="{{pendingQuestions.length === 0}}">暂无待回答问题</view>
+        <view class="empty-state" wx:if="{{pendingQuestions.length === 0}}">
+          <view class="empty-icon">问</view>
+          <text class="empty-title">没有待回答问题</text>
+          <text class="empty-text">知识库未覆盖的提问会记录在这里</text>
+        </view>
         <view class="item-card {{selectedMap[item.question_id] ? 'selected' : ''}}" wx:for="{{pendingQuestions}}" wx:key="question_id">
           <view class="item-check" wx:if="{{selectMode}}" bindtap="toggleSelect" data-id="{{item.question_id}}">
             <text class="check-icon">{{selectedMap[item.question_id] ? '✓' : ''}}</text>
@@ -176,7 +205,7 @@
   </scroll-view>
 
   <!-- 知识库弹窗 -->
-  <view class="modal-mask" wx:if="{{showKBModal}}" bindtap="closeKBModal"></view>
+  <view class="modal-mask {{showKBModal ? 'on' : ''}}" bindtap="closeKBModal"></view>
   <view class="kb-modal {{showKBModal ? 'show' : ''}}">
     <view class="modal-header">
       <text class="modal-title">{{editingKB ? '编辑' : '添加'}}条目</text>

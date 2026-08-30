@@ -3,6 +3,7 @@ const app = getApp();
 Page({
     data: {
         activeTab: 0,
+        loading: true,
         stats: {},
         pendingList: [],
         pendingQuestions: [],
@@ -23,7 +24,6 @@ Page({
 
     onLoad() { this.loadData(); },
     onShow() { this.loadData(); },
-    goBack() { wx.navigateBack(); },
     switchTab(e) {
         this.setData({ activeTab: parseInt(e.currentTarget.dataset.tab), selectMode: false, selectedMap: {} });
     },
@@ -34,6 +34,7 @@ Page({
             this.loadKBList(), this.loadVerifyList(), this.loadVerifiedList(),
             this.loadPendingQuestions()
         ]);
+        this.setData({ loading: false });
     },
 
     async loadStats() { try { const r = await app.request('/admin/stats'); if (r.code === 0) this.setData({ stats: r.data }); } catch (e) {} },

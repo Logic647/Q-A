@@ -4,6 +4,7 @@ Page({
     data: {
         pendingList: [],
         loading: false,
+        loadError: '',
         showAnswerModal: false,
         currentQuestion: '',
         currentQuestionId: 0,
@@ -14,19 +15,17 @@ Page({
         this.loadPendingQuestions();
     },
 
-    goBack() {
-        wx.navigateBack();
-    },
-
     async loadPendingQuestions() {
-        this.setData({ loading: true });
+        this.setData({ loading: true, loadError: '' });
         try {
             const res = await app.request('/qa/pending');
             if (res.code === 0) {
                 this.setData({ pendingList: res.data || [] });
+            } else {
+                this.setData({ loadError: res.msg || '加载失败，请稍后重试' });
             }
         } catch (e) {
-            wx.showToast({ title: '加载失败', icon: 'none' });
+            this.setData({ loadError: '网络异常，请检查网络后重试' });
         }
         this.setData({ loading: false });
     },

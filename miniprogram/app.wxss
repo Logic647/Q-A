@@ -1,4 +1,5 @@
 page {
+  /* ---- 色彩（见根目录 DESIGN.md） ---- */
   --bg: #f4f7f8;
   --surface: #ffffff;
   --surface-muted: #eef4f3;
@@ -15,10 +16,30 @@ page {
   --warning-soft: #fff3df;
   --danger: #cf2c37;
   --danger-soft: #fdeceb;
-  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.05);
-  --shadow-md: 0 6px 18px rgba(17, 24, 39, 0.07);
+  --info: #0e7490;
+  --info-soft: #e0f2f5;
+  --disabled-bg: #eceff0;
+  --disabled-fg: #a1a7af;
+  --mask: rgba(15, 42, 40, 0.45);
+  --frost: rgba(255, 255, 255, 0.96);
+  /* ---- 圆角 ---- */
+  --radius-sm: 16rpx;
+  --radius: 20rpx;
+  --radius-lg: 28rpx;
+  --radius-pill: 999rpx;
+  /* ---- 字号刻度 ---- */
+  --font-xs: 22rpx;
+  --font-sm: 24rpx;
+  --font-md: 28rpx;
+  --font-lg: 32rpx;
+  --font-xl: 40rpx;
+  /* ---- 阴影（青灰调，禁止纯黑） ---- */
+  --shadow-sm: 0 2rpx 4rpx rgba(15, 42, 40, 0.05);
+  --shadow-md: 0 12rpx 36rpx rgba(15, 42, 40, 0.07);
+  /* ---- 动效 ---- */
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', sans-serif;
-  font-size: 28rpx;
+  font-size: var(--font-md);
   color: var(--ink);
   background: var(--bg);
 }
@@ -30,4 +51,113 @@ button {
 
 button::after {
   border: none;
+}
+
+/* ===== 共享：页面主操作按钮（禁用/可用成对） ===== */
+.btn-main {
+  background: var(--primary);
+  color: #ffffff;
+  transition: transform 0.16s var(--ease), background 0.15s var(--ease), opacity 0.15s var(--ease);
+}
+
+.btn-main:active {
+  transform: scale(0.97);
+}
+
+.btn-main[disabled],
+.btn-main.disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-fg);
+}
+
+/* ===== 共享：空状态 ===== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 96rpx 40rpx;
+  color: var(--ink-muted);
+}
+
+.empty-icon {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 32rpx;
+  background: var(--surface-muted);
+  color: var(--ink-muted);
+  font-size: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+  opacity: 0.85;
+}
+
+.empty-title {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+.empty-text {
+  font-size: var(--font-xs);
+  margin-top: 8rpx;
+}
+
+/* ===== 共享：骨架屏 ===== */
+.skel {
+  border-radius: 12rpx;
+  background: linear-gradient(90deg, #edf1f1 25%, #e0e8e7 37%, #edf1f1 63%);
+  background-size: 400% 100%;
+  animation: skel 1.3s ease infinite;
+}
+
+@keyframes skel {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ===== 共享：底部弹窗 ===== */
+.sheet-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--mask);
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease);
+}
+
+.sheet-mask.on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 注意：命名避开 pages/map 的本地 .sheet 类 */
+.bottom-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 61;
+  background: var(--surface);
+  border-radius: 28rpx 28rpx 0 0;
+  transform: translateY(100%);
+  transition: transform 0.24s var(--ease);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom-sheet.on {
+  transform: translateY(0);
+}
+
+.sheet-handle {
+  width: 72rpx;
+  height: 8rpx;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  margin: 16rpx auto 0;
 }
