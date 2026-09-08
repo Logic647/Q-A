@@ -18,7 +18,12 @@ App({
         return new Promise((resolve, reject) => {
             const header = { 'content-type': 'application/json' };
             if (url.startsWith('/admin')) {
-                header['X-Admin-Key'] = 'REDACTED-ADMIN-KEY';
+                // ADMIN_KEY 存放在不入库的 adminkey.js（见 .gitignore），新 clone 需手动创建
+                try {
+                    header['X-Admin-Key'] = require('./adminkey');
+                } catch (e) {
+                    header['X-Admin-Key'] = '';
+                }
             }
             wx.request({
                 url: this.globalData.baseUrl + url,
